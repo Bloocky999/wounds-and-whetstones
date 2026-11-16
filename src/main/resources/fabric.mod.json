@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "pandemonium",
+  "version": "${version}",
+  "name": "Pandemonium",
+  "description": "Enfermedades, fobias y discapacidades absurdas que te caen por lo que haces. Efectos visuales opcionales en el cliente.",
+  "authors": [],
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.pandemonium.Pandemonium"
+    ],
+    "client": [
+      "dev.pandemonium.client.PandemoniumClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
