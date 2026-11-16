@@ -79,8 +79,7 @@ public final class Conditions {
         @Override
         public void tick(ServerPlayer p, long now) {
             if (Fx.due(p, id, now, 300, 700)) {
-                p.setDeltaMovement(p.getDeltaMovement().add(0, 0.3, 0));
-                p.hurtMarked = true;
+                p.push(0.0, 0.3, 0.0);
                 Fx.jerk(p, Fx.rf(p, 4f), -6f);
                 Fx.bar(p, "§e¡Hip!");
                 Payloads.fx(p, "hiccup", 10);

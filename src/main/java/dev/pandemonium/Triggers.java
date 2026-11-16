@@ -19,6 +19,7 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
@@ -26,7 +27,7 @@ import net.minecraft.world.level.block.Blocks;
 /** Aqui estan las formas de pillar cada enfermedad: golpes, pinchazos, caidas, cofres... */
 public final class Triggers {
     private static final Set<EntityType<?>> ZOMBIES = Set.of(
-            EntityType.ZOMBIE, EntityType.ZOMBIE_VILLAGER, EntityType.HUSK, EntityType.DROWNED);
+            EntityTypes.ZOMBIE, EntityTypes.ZOMBIE_VILLAGER, EntityTypes.HUSK, EntityTypes.DROWNED);
 
     private static final Map<UUID, ChestHistory> CHESTS = new HashMap<>();
 
@@ -67,7 +68,7 @@ public final class Triggers {
         if (attacker instanceof ServerPlayer other && ConditionStore.has(other, Conditions.ZOMBIE_INFECTION)) {
             maybe(p, 0.35f, Conditions.ZOMBIE_INFECTION);
         }
-        if (attacker != null && attacker.getType() == EntityType.BEE) {
+        if (attacker != null && attacker.getType() == EntityTypes.BEE) {
             maybe(p, 0.20f, Conditions.ADHD);
         }
         if (source.is(DamageTypes.SWEET_BERRY_BUSH)) {
@@ -80,9 +81,8 @@ public final class Triggers {
             if (taken >= 6f) maybe(p, 0.25f, Conditions.BRITTLE_BONES);
             if (taken >= 4f) maybe(p, 0.15f, Conditions.ACROPHOBIA);
             if (ConditionStore.has(p, Conditions.BRITTLE_BONES)) {
-                // Huesos fragiles: se repite el mismo dano una vez mas
-                p.invulnerableTime = 0;
-                p.hurtServer((ServerLevel) p.level(), p.damageSources().generic(), taken);
+                // Huesos fragiles: se repite el mismo dano una vez mas (sin llegar a matar por si solo)
+                p.setHealth(Math.max(0.5f, p.getHealth() - taken));
             }
         }
         if (source.is(DamageTypes.DROWN)) {

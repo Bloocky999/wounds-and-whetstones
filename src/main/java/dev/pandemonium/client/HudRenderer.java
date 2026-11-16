@@ -36,10 +36,8 @@ public final class HudRenderer {
         long now = System.currentTimeMillis();
 
         screenEffects(g, w, h, now);
-        if (!mc.options.hideGui) {
-            conditionPanel(g, mc, now);
-            ocdTask(g, mc, w, now);
-        }
+        conditionPanel(g, mc, now);
+        ocdTask(g, mc, w, now);
     }
 
     // ------------------------------------------------------------ EFECTOS DE PANTALLA
