@@ -18,12 +18,15 @@ public class Pandemonium implements ModInitializer {
     @Override
     public void onInitialize() {
         ServerLifecycleEvents.SERVER_STARTED.register(ConditionStore::load);
+        ServerLifecycleEvents.SERVER_STARTED.register(Settings::load);
         ServerLifecycleEvents.SERVER_STOPPING.register(ConditionStore::save);
+        ServerLifecycleEvents.SERVER_STOPPING.register(Settings::save);
         ServerTickEvents.END_SERVER_TICK.register(Pandemonium::tick);
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer p = handler.getPlayer();
             Payloads.sync(p);
+            Payloads.timer(p);
             int n = ConditionStore.list(p).size();
             if (n > 0) {
                 Fx.msg(p, "§7Tienes " + n + " condición(es). Escribe §f/pandemonium list§7 para verlas.");
@@ -44,8 +47,14 @@ public class Pandemonium implements ModInitializer {
             if (!p.isAlive() || p.isSpectator()) continue;
             ConditionStore.tickPlayer(p, now);
         }
+        Fx.tickEffects(server);
+        Settings.tick(server);
+        if (now % 8 == 0) Conditions.auras(server, now);
+        if (now % 20 == 0 || (now % 4 == 0 && Fx.hasTempPose(server))) Payloads.poseAll(server);
+        if (now % 20 == 0) Conditions.tickMasks(server);
         if (now % 6000 == 0) {
             ConditionStore.save(server);
+            Settings.save(server);
         }
     }
 }

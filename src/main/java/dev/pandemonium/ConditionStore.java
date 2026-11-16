@@ -18,11 +18,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 
-/** Guarda quien tiene que condicion (y cuanto tiempo le queda). Se guarda en pandemonium.json dentro del mundo. */
+/**
+ * Guarda quien tiene que condicion. Se guarda en pandemonium.json dentro del mundo.
+ * Por cada condicion hay dos entradas: "id" = ticks restantes (-1 = permanente)
+ * y "id#age" = ticks que lleva el jugador con ella (para las etapas).
+ */
 public final class ConditionStore {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Type TYPE = new TypeToken<Map<String, Map<String, Integer>>>() {}.getType();
-    /** jugador -> (id de condicion -> ticks restantes, -1 = permanente) */
     private static final Map<UUID, Map<String, Integer>> DATA = new HashMap<>();
 
     private ConditionStore() {}
@@ -67,10 +70,18 @@ public final class ConditionStore {
         Map<String, Integer> m = DATA.get(p.getUUID());
         if (m == null) return out;
         for (String id : m.keySet()) {
+            if (id.indexOf('#') >= 0) continue;
             Condition c = Conditions.get(id);
             if (c != null) out.add(c);
         }
         return out;
+    }
+
+    /** Ticks que lleva el jugador con la condicion. */
+    public static int age(ServerPlayer p, Condition c) {
+        Map<String, Integer> m = DATA.get(p.getUUID());
+        if (m == null) return 0;
+        return m.getOrDefault(c.id + "#age", 0);
     }
 
     /** Da la condicion al jugador. Devuelve false si ya la tenia. */
@@ -78,6 +89,7 @@ public final class ConditionStore {
         Map<String, Integer> m = DATA.computeIfAbsent(p.getUUID(), k -> new HashMap<>());
         if (m.containsKey(c.id)) return false;
         m.put(c.id, c.duration);
+        m.put(c.id + "#age", 0);
         Fx.msg(p, "§c¡Has contraído: §f" + c.name + "§c! §7" + c.description);
         c.onGained(p);
         Payloads.sync(p);
@@ -87,6 +99,7 @@ public final class ConditionStore {
     public static boolean remove(ServerPlayer p, Condition c) {
         Map<String, Integer> m = DATA.get(p.getUUID());
         if (m == null || m.remove(c.id) == null) return false;
+        m.remove(c.id + "#age");
         c.onLost(p);
         Payloads.sync(p);
         return true;
@@ -96,12 +109,15 @@ public final class ConditionStore {
         for (Condition c : list(p)) remove(p, c);
     }
 
-    /** Al morir se curan las enfermedades temporales; las permanentes se quedan. */
+    /** Al morir se curan las condiciones marcadas (enfermedades); las demas se quedan. */
     public static void onDeath(ServerPlayer p) {
-        for (Condition c : list(p)) {
-            if (c.isTemporary()) {
-                Map<String, Integer> m = DATA.get(p.getUUID());
-                if (m != null) m.remove(c.id);
+        Map<String, Integer> m = DATA.get(p.getUUID());
+        if (m != null) {
+            for (Condition c : list(p)) {
+                if (c.clearedOnDeath()) {
+                    m.remove(c.id);
+                    m.remove(c.id + "#age");
+                }
             }
         }
         Conditions.resetState(p.getUUID());
@@ -111,16 +127,21 @@ public final class ConditionStore {
         Map<String, Integer> m = DATA.get(p.getUUID());
         if (m == null || m.isEmpty()) return;
         for (String id : new ArrayList<>(m.keySet())) {
+            if (id.indexOf('#') >= 0) continue;
             Condition c = Conditions.get(id);
             if (c == null) {
                 m.remove(id);
+                m.remove(id + "#age");
                 continue;
             }
             c.tick(p, now);
             Integer left = m.get(id);
-            if (left != null && left > 0) {
+            if (left == null) continue;
+            m.merge(id + "#age", 1, Integer::sum);
+            if (left > 0) {
                 if (left == 1) {
                     m.remove(id);
+                    m.remove(id + "#age");
                     c.onLost(p);
                     Payloads.sync(p);
                 } else {

@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -21,6 +22,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
 
@@ -44,15 +47,20 @@ public final class Triggers {
         });
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
             if (hand == InteractionHand.MAIN_HAND && !level.isClientSide() && player instanceof ServerPlayer p) {
+                Conditions.ocdUse(p, level.getBlockState(hit.getBlockPos()));
                 onUseBlock(p, hit.getBlockPos(), level.getGameTime(), level.getBlockState(hit.getBlockPos()));
             }
             return InteractionResult.PASS;
+        });
+        PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, be) -> {
+            if (player instanceof ServerPlayer p) Conditions.ocdBreak(p, state);
         });
         ServerTickEvents.END_SERVER_TICK.register(Triggers::onTick);
     }
 
     /** Intenta dar una condicion con cierta probabilidad (0..1). */
     private static void maybe(ServerPlayer p, float chance, Condition c) {
+        if (!Settings.naturalOn()) return;
         if (p.getRandom().nextFloat() < chance) {
             ConditionStore.give(p, c);
         }
@@ -66,8 +74,30 @@ public final class Triggers {
             maybe(p, 0.30f, Conditions.ZOMBIE_INFECTION);
         }
         if (attacker instanceof ServerPlayer other && ConditionStore.has(other, Conditions.ZOMBIE_INFECTION)) {
-            maybe(p, 0.35f, Conditions.ZOMBIE_INFECTION);
+            if (Conditions.spreads(other, p, 0.35f)) ConditionStore.give(p, Conditions.ZOMBIE_INFECTION);
         }
+        if (attacker instanceof ServerPlayer other && ConditionStore.has(other, Conditions.FLU)) {
+            if (Conditions.spreads(other, p, 0.15f)) ConditionStore.give(p, Conditions.FLU);
+        }
+        if (attacker instanceof ServerPlayer other && ConditionStore.has(other, Conditions.RABIES)) {
+            if (Conditions.spreads(other, p, 0.5f)) ConditionStore.give(p, Conditions.RABIES);
+        }
+        if (attacker != null && (attacker.getType() == EntityTypes.WOLF || attacker.getType() == EntityTypes.FOX)) {
+            maybe(p, 0.04f, Conditions.RABIES);
+        }
+        if (attacker != null && attacker.getType() == EntityTypes.PHANTOM) maybe(p, 0.25f, Conditions.INSOMNIA);
+        if (attacker != null && (attacker.getType() == EntityTypes.SPIDER || attacker.getType() == EntityTypes.CAVE_SPIDER)) {
+            maybe(p, 0.10f, Conditions.ARACHNOPHOBIA);
+        }
+        if (attacker != null && attacker.getType().getCategory() == MobCategory.MONSTER) maybe(p, 0.03f, Conditions.PANIC);
+        if (source.is(DamageTypes.IN_WALL)) maybe(p, 0.40f, Conditions.CLAUSTROPHOBIA);
+        if (attacker != null && !source.is(DamageTypes.FALL) && taken >= 5f) maybe(p, 0.12f, Conditions.BLEEDING);
+        if (taken >= 8f) {
+            maybe(p, 0.03f, Conditions.EPILEPSY);
+            if (ConditionStore.has(p, Conditions.EPILEPSY) && p.getRandom().nextFloat() < 0.15f) Conditions.startSeizure(p);
+        }
+        if (!source.is(DamageTypes.FALL) && taken >= 7f) maybe(p, 0.15f, Conditions.CONCUSSION);
+        if (taken >= 10f) maybe(p, 0.06f, Conditions.TREMORS);
         if (attacker != null && attacker.getType() == EntityTypes.BEE) {
             maybe(p, 0.20f, Conditions.ADHD);
         }
@@ -80,6 +110,8 @@ public final class Triggers {
         if (source.is(DamageTypes.FALL)) {
             if (taken >= 6f) maybe(p, 0.25f, Conditions.BRITTLE_BONES);
             if (taken >= 4f) maybe(p, 0.15f, Conditions.ACROPHOBIA);
+            if (taken >= 4f) maybe(p, 0.15f, Conditions.SPRAIN);
+            if (taken >= 8f) maybe(p, 0.10f, Conditions.ARTHROSIS);
             if (ConditionStore.has(p, Conditions.BRITTLE_BONES)) {
                 // Huesos fragiles: se repite el mismo dano una vez mas (sin llegar a matar por si solo)
                 p.setHealth(Math.max(0.5f, p.getHealth() - taken));
@@ -90,9 +122,16 @@ public final class Triggers {
         }
         if (source.is(DamageTypes.LIGHTNING_BOLT)) {
             maybe(p, 0.60f, Conditions.TOURETTE);
+            maybe(p, 0.25f, Conditions.TREMORS);
+            maybe(p, 0.10f, Conditions.COLORBLIND);
+            maybe(p, 0.15f, Conditions.EPILEPSY);
+            if (ConditionStore.has(p, Conditions.EPILEPSY)) Conditions.startSeizure(p);
+            maybe(p, 0.20f, Conditions.MIGRAINE);
         }
         if (source.is(DamageTypes.EXPLOSION) || source.is(DamageTypes.PLAYER_EXPLOSION)) {
             maybe(p, 0.35f, Conditions.DEMENTIA);
+            maybe(p, 0.20f, Conditions.BLINDNESS);
+            maybe(p, 0.30f, Conditions.TINNITUS);
         }
     }
 
@@ -103,7 +142,7 @@ public final class Triggers {
         if (h != null && h.pos().equals(pos) && now - h.lastTick() < 600) {
             int count = h.count() + 1;
             CHESTS.put(p.getUUID(), new ChestHistory(pos, count, now));
-            if (count >= 3 && ConditionStore.give(p, Conditions.OCD)) {
+            if (count >= 3 && Settings.naturalOn() && ConditionStore.give(p, Conditions.OCD)) {
                 Fx.msg(p, "§7Abrir el mismo cofre tres veces... algo no va bien en tu cabeza.");
             }
         } else {
@@ -120,7 +159,7 @@ public final class Triggers {
             return;
         }
         h[1]++;
-        if (h[1] >= 3 && ConditionStore.give(p, Conditions.HYPOCHONDRIA)) {
+        if (h[1] >= 3 && Settings.naturalOn() && ConditionStore.give(p, Conditions.HYPOCHONDRIA)) {
             Fx.msg(p, "§7Mirarte tanto los síntomas no es sano...");
         }
     }
@@ -140,6 +179,32 @@ public final class Triggers {
             if (p.hasEffect(MobEffects.HUNGER) && !ConditionStore.has(p, Conditions.ZOMBIE_INFECTION)) {
                 maybe(p, 0.04f, Conditions.FOOD_POISONING);
             }
+            // Congelacion total, calor del Nether, migrana por cansancio, leche
+            if (p.getTicksFrozen() >= p.getTicksRequiredToFreeze()) maybe(p, 0.06f, Conditions.FROSTBITE);
+            if (p.level().dimension() == Level.NETHER && !p.hasEffect(MobEffects.FIRE_RESISTANCE)) {
+                maybe(p, 0.0025f, Conditions.HEATSTROKE);
+            }
+            if (p.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)) > 48000) maybe(p, 0.002f, Conditions.MIGRAINE);
+            maybe(p, 1f / 5000f, Conditions.POX);
+            if (p.getFoodData().getFoodLevel() <= 4) maybe(p, 0.02f, Conditions.ANEMIA);
+            if (p.isPassenger()) maybe(p, 0.01f, Conditions.MOTION_SICKNESS);
+            if (Conditions.nearType(p, 3, EntityTypes.CAT, EntityTypes.OCELOT)) maybe(p, 0.01f, Conditions.CAT_ALLERGY);
+            if (p.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)) > 120000) maybe(p, 0.001f, Conditions.INSOMNIA);
+            if (Conditions.milkDrank(p)) {
+                if (ConditionStore.has(p, Conditions.LACTOSE)) {
+                    Fx.startVomit(p, 28);
+                    p.getFoodData().setFoodLevel(Math.max(0, p.getFoodData().getFoodLevel() - 4));
+                    Fx.effect(p, MobEffects.NAUSEA, 120, 0);
+                    Fx.bar(p, "§eLa leche te ha sentado fatal...");
+                } else {
+                    maybe(p, 0.05f, Conditions.LACTOSE);
+                }
+            }
+            // Gripe: frio o lluvia
+            if (p.isFreezing()) maybe(p, 0.015f, Conditions.FLU);
+            else if (p.isInWaterOrRain() && !p.isInWater()) maybe(p, 0.003f, Conditions.FLU);
+            // Frio extremo: artrosis
+            if (p.isFreezing()) maybe(p, 0.02f, Conditions.ARTHROSIS);
             // Hipo espontaneo
             maybe(p, 1f / 1500f, Conditions.HICCUPS);
             // Narcolepsia: llevar mucho sin dormir

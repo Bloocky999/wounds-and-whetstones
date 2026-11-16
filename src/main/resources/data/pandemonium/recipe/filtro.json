@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:charcoal"
+  ],
+  "result": {
+    "id": "minecraft:paper",
+    "count": 2,
+    "components": {
+      "minecraft:item_name": "Filtro de carb\u00f3n activo",
+      "minecraft:custom_data": {
+        "pfilter": 1
+      },
+      "minecraft:custom_model_data": {
+        "strings": [
+          "pandemonium_filter"
+        ]
+      }
+    }
+  }
+}

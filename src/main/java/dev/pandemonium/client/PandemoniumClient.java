@@ -1,7 +1,7 @@
 package dev.pandemonium.client;
 
-import dev.pandemonium.Pandemonium;
 import dev.pandemonium.Payloads;
+import dev.pandemonium.Pandemonium;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -13,17 +13,27 @@ public class PandemoniumClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientPlayNetworking.registerGlobalReceiver(Payloads.SyncPayload.TYPE,
-                (payload, context) -> ClientState.setActive(payload.ids()));
+                (payload, context) -> context.client().execute(() -> ClientState.setSync(payload.entries())));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.FxPayload.TYPE,
-                (payload, context) -> ClientState.startFx(payload.id(), payload.ticks()));
+                (payload, context) -> context.client().execute(() -> ClientState.fx(payload.name(), payload.ticks())));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.TaskPayload.TYPE,
-                (payload, context) -> ClientState.setTask(payload.text(), payload.ticks()));
+                (payload, context) -> context.client().execute(() -> ClientState.task(payload.text(), payload.ticks())));
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.PosePayload.TYPE,
+                (payload, context) -> context.client().execute(() -> ClientState.setPose(payload.entries())));
 
-        HudElementRegistry.attachElementBefore(
-                VanillaHudElements.CHAT,
-                Identifier.fromNamespaceAndPath(Pandemonium.MOD_ID, "hud"),
-                HudRenderer::extract);
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.TimerPayload.TYPE,
+                (payload, context) -> context.client().execute(
+                        () -> ClientState.setTimer(payload.on(), payload.remaining(), payload.interval())));
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientState.reset());
+        HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
+                Identifier.fromNamespaceAndPath(Pandemonium.MOD_ID, "hud"), HudRenderer::extract);
+
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            ClientState.entries = new java.util.ArrayList<>();
+            ClientState.FX.clear();
+            ClientState.pose = new java.util.HashMap<>();
+            ClientState.task("", 0);
+            ClientState.timerOn = false;
+        });
     }
 }
