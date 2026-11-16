@@ -80,11 +80,11 @@ public final class Payloads {
     private Payloads() {}
 
     public static void register() {
-        PayloadTypeRegistry.playS2C().register(SyncPayload.TYPE, SyncPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(FxPayload.TYPE, FxPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(TaskPayload.TYPE, TaskPayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(PosePayload.TYPE, PosePayload.CODEC);
-        PayloadTypeRegistry.playS2C().register(TimerPayload.TYPE, TimerPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SyncPayload.TYPE, SyncPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(FxPayload.TYPE, FxPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(TaskPayload.TYPE, TaskPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(PosePayload.TYPE, PosePayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(TimerPayload.TYPE, TimerPayload.CODEC);
     }
 
     private static void send(ServerPlayer p, CustomPacketPayload payload) {

@@ -653,7 +653,7 @@ public final class Conditions {
                     Fx.effect(p, MobEffects.NAUSEA, 100, 0);
                     Fx.effect(p, MobEffects.BLINDNESS, 40, 0);
                     Fx.bar(p, "§4¡AGUA! ¡NO!");
-                    Fx.sound(p, SoundEvents.WOLF_GROWL, 0.8f, 0.8f);
+                    Fx.sound(p, SoundEvents.ZOMBIE_AMBIENT, 0.8f, 0.8f);
                 }
             }
             if (stage >= 3 && Fx.due(p, id + ":u", now, 400, 800)) {
@@ -1187,7 +1187,7 @@ public final class Conditions {
             if (e.distanceTo(p) < nearest.distanceTo(p)) nearest = e;
         }
         Fx.lookAt(p, nearest);
-        p.swing(InteractionHand.MAIN_HAND);
+        p.swing(InteractionHand.MAIN_HAND, p.getItemInHand(InteractionHand.MAIN_HAND).getAttackAnimation(), true);
         p.attack(nearest);
         Fx.msg(p, "§4¡No puedes controlarte!");
         Fx.sound(p, SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR, 0.8f, 0.8f);

@@ -16,7 +16,7 @@ public abstract class ScreenMixin {
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("TAIL"))
     private void pandemonium$moodles(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        if (!MoodleRenderer.isInteractiveScreen(mc) || mc.screen != (Object) this) return;
+        if (!MoodleRenderer.isInteractiveScreen(mc) || mc.getScreen() != (Object) this) return;
         ClientState.screenDrawMs = System.currentTimeMillis();
         MoodleRenderer.draw(g, mc, mouseX, mouseY, true);
     }
