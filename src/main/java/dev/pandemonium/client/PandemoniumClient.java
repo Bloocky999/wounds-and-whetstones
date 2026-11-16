@@ -34,6 +34,7 @@ public class PandemoniumClient implements ClientModInitializer {
             ClientState.pose = new java.util.HashMap<>();
             ClientState.task("", 0);
             ClientState.timerOn = false;
+            ClientState.colorblindOn = false;
         });
     }
 }

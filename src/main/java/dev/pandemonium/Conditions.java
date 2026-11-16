@@ -14,7 +14,9 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
@@ -653,7 +655,7 @@ public final class Conditions {
                     Fx.effect(p, MobEffects.NAUSEA, 100, 0);
                     Fx.effect(p, MobEffects.BLINDNESS, 40, 0);
                     Fx.bar(p, "§4¡AGUA! ¡NO!");
-                    Fx.sound(p, SoundEvents.ZOMBIE_AMBIENT, 0.8f, 0.8f);
+                    Fx.sound(p, SoundEvents.ZOMBIE_AMBIENT, 0.8f, 0.5f);
                 }
             }
             if (stage >= 3 && Fx.due(p, id + ":u", now, 400, 800)) {
@@ -777,7 +779,7 @@ public final class Conditions {
 
     public static final Condition COLORBLIND = new Condition(
             "colorblind", "Daltonismo",
-            "El mundo se ve apagado y descolorido. Para siempre.", -1) {
+            "Los bloques cambian de aspecto al azar (según tu semilla): la roca como obsidiana, los troncos como piedra... Para siempre.", -1) {
         @Override
         public void tick(ServerPlayer p, long now) {
             // solo visual (cliente)
@@ -1018,6 +1020,344 @@ public final class Conditions {
         }
     }
 
+    // ------------------------------------------------ VIRUS, DISCAPACIDADES Y COMIDA CRUDA
+
+    public static final Condition COLD = new Condition(
+            "cold", "Resfriado",
+            "Estornudos y tos suave. Muy contagioso por cercanía y estornudo. Dura 5 minutos.", 6000) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (Fx.due(p, id + ":s", now, 400, 900)) {
+                Fx.jerk(p, Fx.rf(p, 8f), 18f);
+                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 0.9f, 1.4f);
+                Fx.spray(p, ParticleTypes.SNEEZE, 8, 0.25, 0.5);
+                Fx.bar(p, "§e¡Achís!");
+                Payloads.fx(p, "sneeze", 20);
+                spreadFront(p, this, 0.45f);
+            }
+            if (Fx.due(p, id + ":c", now, 500, 1100)) cough(p, this, 0.3f);
+            spreadNear(p, this, 2.0f, 0.02f, now);
+        }
+    };
+
+    public static final Condition GASTRO = new Condition(
+            "gastroenteritis", "Gastroenteritis",
+            "Vómitos fuertes (¡y contagiosos si vomitas a alguien!). Dura 4 minutos.", 4800) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (now % 40 == 0) Fx.effectHidden(p, MobEffects.WEAKNESS, 60, 0);
+            if (Fx.due(p, id, now, 300, 700)) {
+                Fx.startVomit(p, 28);
+                p.getFoodData().setFoodLevel(Math.max(0, p.getFoodData().getFoodLevel() - 3));
+                Fx.effect(p, MobEffects.NAUSEA, 100, 0);
+                Fx.bar(p, "§2*blergh*");
+                spreadFront(p, this, 0.7f);
+            }
+        }
+    };
+
+    public static final Condition MEASLES = new Condition(
+            "measles", "Sarampión",
+            "Fiebre, erupciones y tos. Se contagia muchísimo por cercanía. Dura 7 minutos.", 9000) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            spreadNear(p, this, 3.0f, 0.06f, now);
+            if (Fx.due(p, id + ":c", now, 500, 1100)) cough(p, this, 0.3f);
+            if (Fx.due(p, id + ":f", now, 1200, 2400)) {
+                Fx.effect(p, MobEffects.WEAKNESS, 200, 0);
+                Fx.bar(p, "§cTienes fiebre y la piel te arde...");
+                Payloads.fx(p, "sick", 50);
+            }
+        }
+    };
+
+    public static final Condition PINKEYE = new Condition(
+            "pinkeye", "Conjuntivitis",
+            "Ojos rojos y pegajosos: a veces no ves nada. Se pega por contacto cercano. Dura 5 minutos.", 6000) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            spreadNear(p, this, 1.5f, 0.05f, now);
+            if (Fx.due(p, id, now, 400, 900)) {
+                Fx.effect(p, MobEffects.BLINDNESS, 30, 0);
+                Payloads.fx(p, "insomnia", 60);
+                Fx.bar(p, "§dSe te pegan los ojos...");
+            }
+        }
+    };
+
+    public static final Condition PLAGUE = new Condition(
+            "plague", "Peste negra",
+            "Fiebre, bubones y tos con sangre. Cada fase es peor, te quita vida y se contagia fuerte. Hasta que mueras.", -1) {
+        private int stage(ServerPlayer p) {
+            int age = ConditionStore.age(p, this);
+            if (age < 3600) return 1;
+            if (age < 9000) return 2;
+            return 3;
+        }
+
+        @Override
+        public boolean clearedOnDeath() {
+            return true;
+        }
+
+        @Override
+        public String label(ServerPlayer p) {
+            return "Fase " + stage(p);
+        }
+
+        @Override
+        public int poseFlags(ServerPlayer p) {
+            int st = stage(p);
+            if (st >= 3) return POSE_HUNCH | POSE_LIMP;
+            return st >= 2 ? POSE_HUNCH : 0;
+        }
+
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            int st = stage(p);
+            announceStage(p, id, st, new String[] {
+                "", "§8Te salen bubones negros y duelen. §7(fase 2)",
+                "§4Toses sangre y te quedas sin fuerzas. §7(fase 3)"});
+            spreadNear(p, this, 2.5f, 0.05f, now);
+            if (st == 1 && Fx.due(p, id + ":f", now, 600, 1200)) {
+                Fx.effect(p, MobEffects.WEAKNESS, 200, 0);
+                Fx.bar(p, "§cFiebre alta...");
+                Payloads.fx(p, "sick", 50);
+            }
+            if (st >= 2) {
+                if (now % 40 == 0) Fx.effectHidden(p, MobEffects.SLOWNESS, 60, st - 2);
+                if (now % (st == 3 ? 300 : 600) == 0) {
+                    p.setHealth(Math.max(1.0f, p.getHealth() - 1.0f));
+                    Fx.sound(p, SoundEvents.PLAYER_HURT, 0.4f, 0.7f);
+                }
+            }
+            if (st >= 3 && Fx.due(p, id + ":c", now, 300, 700)) {
+                cough(p, this, 0.4f);
+                Fx.level(p).sendParticles(new DustParticleOptions(0x880000, 1.0f),
+                        p.getX(), p.getEyeY() - 0.1, p.getZ(), 6, 0.2, 0.2, 0.2, 0.0);
+            }
+        }
+    };
+
+    public static final Condition SALMONELLA = new Condition(
+            "salmonella", "Salmonela",
+            "Por carne cruda mal cocinada: calambres, fiebre y vómitos. Dura 4 minutos.", 4800) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (now % 40 == 0) {
+                Fx.effectHidden(p, MobEffects.WEAKNESS, 60, 0);
+                Fx.effectHidden(p, MobEffects.SLOWNESS, 60, 0);
+            }
+            if (Fx.due(p, id, now, 400, 800)) {
+                Fx.startVomit(p, 28);
+                p.getFoodData().setFoodLevel(Math.max(0, p.getFoodData().getFoodLevel() - 2));
+                Fx.bar(p, "§2Calambres horribles...");
+            }
+            if (Fx.due(p, id + ":f", now, 1200, 2400)) {
+                Fx.bar(p, "§cTienes fiebre...");
+                Payloads.fx(p, "sick", 50);
+            }
+        }
+    };
+
+    public static final Condition PARASITES = new Condition(
+            "parasites", "Parásitos",
+            "Una tenia te roba la comida: pasas hambre aunque comas. Empeora con el tiempo. Hasta que mueras.", -1) {
+        private int stage(ServerPlayer p) {
+            return ConditionStore.age(p, this) < 12000 ? 1 : 2;
+        }
+
+        @Override
+        public boolean clearedOnDeath() {
+            return true;
+        }
+
+        @Override
+        public String label(ServerPlayer p) {
+            return "Fase " + stage(p);
+        }
+
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            int st = stage(p);
+            announceStage(p, id, st, new String[] {"", "§2Los parásitos se multiplican. §7(fase 2)"});
+            if (now % 600 == 0) {
+                p.getFoodData().setFoodLevel(Math.max(0, p.getFoodData().getFoodLevel() - st));
+            }
+            if (st >= 2 && Fx.due(p, id + ":h", now, 600, 1200)) Fx.effect(p, MobEffects.HUNGER, 200, 0);
+            if (Fx.due(p, id + ":g", now, 800, 1600)) {
+                Fx.sound(p, SoundEvents.PLAYER_BURP, 0.7f, 0.5f);
+                Fx.bar(p, "§2*gruñe tu estómago*");
+            }
+            if (Fx.due(p, id + ":v", now, 4000, 8000)) Fx.startVomit(p, 28);
+        }
+    };
+
+    private static final String[] WHISPERS = {
+        "Te están mirando.", "No confíes en nadie.", "Detrás de ti.", "Ya vienen.", "Lo saben todo.",
+        "No estás solo.", "Escucha.", "Hay alguien en la pared."
+    };
+    private static final String[] FAKE_DISEASES = {
+        "Voces", "Ojos en la pared", "Mal de ojo", "Eco mental", "Sombra persistente"
+    };
+
+    public static final Condition SCHIZOPHRENIA = new Condition(
+            "schizophrenia", "Esquizofrenia",
+            "Oyes pasos y susurros que no existen, ves sombras en el rabillo del ojo y te salen enfermedades falsas. Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            List<Fake> list = FAKES.computeIfAbsent(p.getUUID(), k -> new ArrayList<>());
+            boolean changed = false;
+            if (now % 20 == 0) {
+                Iterator<Fake> it = list.iterator();
+                while (it.hasNext()) {
+                    if (it.next().expires() <= now) {
+                        it.remove();
+                        changed = true;
+                    }
+                }
+            }
+            if (Fx.due(p, id + ":f", now, 1500, 3000)) {
+                list.add(new Fake(FAKE_DISEASES[p.getRandom().nextInt(FAKE_DISEASES.length)], now + 3600));
+                changed = true;
+            }
+            if (changed) Payloads.sync(p);
+            if (Fx.due(p, id, now, 300, 900)) hallucinate(p);
+        }
+    };
+
+    private static void hallucinate(ServerPlayer p) {
+        switch (p.getRandom().nextInt(5)) {
+            case 0 -> {
+                Fx.sound(p, SoundEvents.ZOMBIE_AMBIENT, 1.0f, 0.8f);
+                Fx.bar(p, "§8...pasos detrás de ti");
+            }
+            case 1 -> {
+                Fx.sound(p, SoundEvents.CREEPER_PRIMED, 1.0f, 1.0f);
+                Fx.jerk(p, Fx.rf(p, 20f), 0f);
+            }
+            case 2 -> {
+                Fx.msg(p, "§8§o" + WHISPERS[p.getRandom().nextInt(WHISPERS.length)]);
+                Fx.sound(p, SoundEvents.ENDERMAN_STARE, 0.5f, 0.6f);
+            }
+            case 3 -> Payloads.fx(p, "shadow", 50);
+            default -> {
+                Payloads.fx(p, "shadow", 50);
+                Fx.sound(p, SoundEvents.SKELETON_AMBIENT, 0.8f, 0.7f);
+            }
+        }
+    }
+
+    public static final Condition KLEPTOMANIA = new Condition(
+            "kleptomania", "Cleptomanía",
+            "No puedes soltar lo que has cogido (si lo tiras, vuelve a tu inventario) y los objetos cercanos te atraen. Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (now % 5 != 0) return;
+            AABB box = p.getBoundingBox().inflate(5);
+            List<ItemEntity> items = Fx.level(p).getEntitiesOfClass(ItemEntity.class, box, e -> e.isAlive());
+            if (items.isEmpty()) return;
+            for (ItemEntity e : items) {
+                Vec3 d = p.position().add(0, 0.5, 0).subtract(e.position());
+                if (d.length() > 0.5) e.setDeltaMovement(d.normalize().scale(0.3));
+            }
+            if (Fx.due(p, id, now, 1500, 3000)) Fx.bar(p, "§8No puedo dejar de coger cosas...");
+        }
+    };
+
+    public static final Condition LAME_ARM = new Condition(
+            "lame_arm", "Brazo inutilizado",
+            "No puedes usar la mano izquierda (el objeto de la segunda mano vuelve a tu inventario) y el brazo cuelga. Para siempre.", -1) {
+        @Override
+        public int poseFlags(ServerPlayer p) {
+            return POSE_LAMEARM;
+        }
+
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (now % 10 == 0) {
+                ItemStack off = p.getOffhandItem();
+                if (!off.isEmpty() && p.getInventory().add(off.copy())) {
+                    p.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+                    Fx.bar(p, "§8No puedes usar ese brazo.");
+                }
+            }
+            if (now % 40 == 0) Fx.effectHidden(p, MobEffects.MINING_FATIGUE, 50, 0);
+        }
+    };
+
+    public static final Condition BAD_LEG = new Condition(
+            "bad_leg", "Pierna lesionada",
+            "Cojeas siempre, vas más lento y no puedes correr. Para siempre.", -1) {
+        @Override
+        public int poseFlags(ServerPlayer p) {
+            return POSE_LIMP;
+        }
+
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (p.isSprinting()) p.setSprinting(false);
+            if (now % 40 == 0) Fx.effectHidden(p, MobEffects.SLOWNESS, 60, 0);
+        }
+    };
+
+    public static final Condition NIGHT_BLINDNESS = new Condition(
+            "night_blindness", "Ceguera nocturna",
+            "De noche, al aire libre, casi no ves nada. Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            if (now % 20 != 0) return;
+            Level level = p.level();
+            if (!level.isBrightOutside() && level.canSeeSky(p.blockPosition())) Payloads.fx(p, "night", 40);
+        }
+    };
+
+    public static final Condition MUTISM = new Condition(
+            "mutism", "Mudez",
+            "No puedes hablar: tus mensajes del chat no salen. Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            // el bloqueo del chat esta en Triggers
+        }
+    };
+
+    public static final Condition STUTTER = new Condition(
+            "stutter", "Tartamudez",
+            "Tus mensajes del chat salen tartamudeados (h-hola...). Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            // el tartamudeo del chat esta en Triggers
+        }
+    };
+
+    private static final Map<UUID, Integer> SPIN = new HashMap<>();
+
+    public static final Condition VERTIGO = new Condition(
+            "vertigo", "Vértigo",
+            "De pronto todo gira: la cámara da vueltas unos segundos. Para siempre.", -1) {
+        @Override
+        public void tick(ServerPlayer p, long now) {
+            Integer left = SPIN.get(p.getUUID());
+            if (left != null) {
+                Fx.jerk(p, 7f, 0f);
+                if (left <= 1) SPIN.remove(p.getUUID());
+                else SPIN.put(p.getUUID(), left - 1);
+                return;
+            }
+            if (Fx.due(p, id, now, 4000, 9000)) {
+                SPIN.put(p.getUUID(), 50);
+                Fx.effect(p, MobEffects.NAUSEA, 160, 0);
+                Payloads.fx(p, "vertigo", 60);
+                Fx.bar(p, "§8Todo da vueltas...");
+            }
+        }
+
+        @Override
+        public void onLost(ServerPlayer p) {
+            SPIN.remove(p.getUUID());
+        }
+    };
+
     // ------------------------------------------------------------------ REGISTRO
 
     public static final List<Condition> ALL = List.of(
@@ -1027,7 +1367,16 @@ public final class Conditions {
             ARTHROSIS, BLINDNESS, HYPOCHONDRIA,
             FROSTBITE, HEATSTROKE, RABIES, POX, CONCUSSION, LACTOSE, MIGRAINE, TREMORS, TINNITUS,
             INSOMNIA, COLORBLIND, SPRAIN, MOTION_SICKNESS, ANEMIA, PANIC, ARACHNOPHOBIA, CLAUSTROPHOBIA,
-            BLEEDING, CAT_ALLERGY, EPILEPSY);
+            BLEEDING, CAT_ALLERGY, EPILEPSY,
+            COLD, GASTRO, MEASLES, PINKEYE, PLAGUE, SALMONELLA, PARASITES, SCHIZOPHRENIA, KLEPTOMANIA,
+            LAME_ARM, BAD_LEG, NIGHT_BLINDNESS, MUTISM, STUTTER, VERTIGO);
+
+    /** Virus que tambien se pasan al golpear a otro jugador. */
+    public record Spread(Condition virus, float hitChance) {}
+
+    public static final List<Spread> SPREADS = List.of(
+            new Spread(COLD, 0.10f), new Spread(GASTRO, 0.12f), new Spread(MEASLES, 0.30f),
+            new Spread(PINKEYE, 0.20f), new Spread(PLAGUE, 0.35f), new Spread(POX, 0.10f));
 
     private Conditions() {}
 
@@ -1152,6 +1501,11 @@ public final class Conditions {
         Fx.bar(p, covered ? "§7*cof* (con mascarilla)" : "§e*COF COF*");
         Payloads.fx(p, "cough", 12);
         Fx.pose(p, Condition.POSE_COUGH, 12);
+        spreadFront(p, virus, chance);
+    }
+
+    /** Contagio hacia delante: a quien tengas delante a menos de 3 bloques (tos, estornudo, vomito). */
+    public static void spreadFront(ServerPlayer p, Condition virus, float chance) {
         net.minecraft.world.phys.Vec3 look = p.getLookAngle();
         for (ServerPlayer other : Fx.level(p).players()) {
             if (other == p || ConditionStore.has(other, virus)) continue;
@@ -1161,9 +1515,51 @@ public final class Conditions {
             if (d.normalize().dot(look) < 0.7) continue;
             if (spreads(p, other, chance)) {
                 ConditionStore.give(other, virus);
-                Fx.msg(p, "§7Le has tosido en la cara a " + other.getName().getString() + "...");
+                Fx.msg(p, "§7Le has pasado algo a " + other.getName().getString() + "...");
             }
         }
+    }
+
+    /** Contagio por cercania constante (se llama cada tick; actua una vez por segundo). */
+    private static void spreadNear(ServerPlayer p, Condition virus, float radius, float chance, long now) {
+        if (now % 20 != 0) return;
+        for (ServerPlayer other : Fx.level(p).players()) {
+            if (other == p || other.distanceTo(p) > radius || ConditionStore.has(other, virus)) continue;
+            if (spreads(p, other, chance)) ConditionStore.give(other, virus);
+        }
+    }
+
+    private static final Map<String, Integer> RAW_SEEN = new HashMap<>();
+
+    /** Nombre de la carne cruda que el jugador ha comido desde la ultima comprobacion (o null). */
+    public static String rawEaten(ServerPlayer p) {
+        Item[] raws = {Items.BEEF, Items.PORKCHOP, Items.CHICKEN, Items.MUTTON, Items.RABBIT, Items.COD, Items.SALMON, Items.ROTTEN_FLESH};
+        String[] names = {"beef", "pork", "chicken", "mutton", "rabbit", "cod", "salmon", "rotten"};
+        String found = null;
+        for (int i = 0; i < raws.length; i++) {
+            int n = p.getStats().getValue(Stats.ITEM_USED.get(raws[i]));
+            Integer last = RAW_SEEN.put(p.getUUID() + names[i], n);
+            if (last != null && n > last) found = names[i];
+        }
+        return found;
+    }
+
+    public static boolean keepsItems(ServerPlayer p) {
+        return ConditionStore.has(p, KLEPTOMANIA);
+    }
+
+    /** Tartamudeo: repite la primera letra de algunas palabras. */
+    public static String stutter(String text, ServerPlayer p) {
+        StringBuilder sb = new StringBuilder();
+        for (String w : text.split(" ")) {
+            if (w.length() > 1 && p.getRandom().nextFloat() < 0.4f) {
+                int rep = 1 + p.getRandom().nextInt(2);
+                for (int r = 0; r < rep; r++) sb.append(w.charAt(0)).append('-');
+            }
+            sb.append(w).append(' ');
+            if (p.getRandom().nextFloat() < 0.08f) sb.append("... ");
+        }
+        return sb.toString().trim();
     }
 
     /** Etapa 3 de la infeccion: el sol te quema como a un zombi (el casco te protege). */
@@ -1187,7 +1583,6 @@ public final class Conditions {
             if (e.distanceTo(p) < nearest.distanceTo(p)) nearest = e;
         }
         Fx.lookAt(p, nearest);
-        p.swing(InteractionHand.MAIN_HAND, p.getItemInHand(InteractionHand.MAIN_HAND).getAttackAnimation(), true);
         p.attack(nearest);
         Fx.msg(p, "§4¡No puedes controlarte!");
         Fx.sound(p, SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR, 0.8f, 0.8f);

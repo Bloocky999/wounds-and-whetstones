@@ -2,6 +2,9 @@ package dev.pandemonium.client;
 
 import dev.pandemonium.Condition;
 import java.util.ArrayList;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +65,54 @@ public final class ClientState {
         }
         SEEN.keySet().retainAll(keys);
         entries = list;
+        boolean cb = has("colorblind");
+        if (cb != colorblindOn) {
+            colorblindOn = cb;
+            refreshChunks();
+        }
+    }
+
+    // ---- Daltonismo: cambia el aspecto de los bloques con una semilla (la del jugador)
+    public static boolean colorblindOn = false;
+    private static Map<Block, Block> colorMap = null;
+    private static long colorSeed = Long.MIN_VALUE;
+    private static final Block[] POOL = {
+        Blocks.STONE, Blocks.COBBLESTONE, Blocks.DIRT, Blocks.SAND, Blocks.GRAVEL, Blocks.OAK_LOG, Blocks.BIRCH_LOG,
+        Blocks.SPRUCE_LOG, Blocks.OAK_PLANKS, Blocks.SPRUCE_PLANKS, Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE,
+        Blocks.DIAMOND_ORE, Blocks.OBSIDIAN, Blocks.NETHERRACK, Blocks.DEEPSLATE, Blocks.ANDESITE, Blocks.GRANITE,
+        Blocks.DIORITE, Blocks.SNOW_BLOCK, Blocks.CLAY, Blocks.BRICKS, Blocks.GRASS_BLOCK
+    };
+
+    /** Estado de bloque que se debe dibujar en lugar del real (lo usa el mixin del modelo de bloques). */
+    public static BlockState remap(BlockState s) {
+        if (!colorblindOn) return s;
+        Block to = colorMap().get(s.getBlock());
+        return to == null ? s : to.defaultBlockState();
+    }
+
+    private static Map<Block, Block> colorMap() {
+        Minecraft mc = Minecraft.getInstance();
+        long seed = mc.player == null ? 0L
+                : mc.player.getUUID().getMostSignificantBits() ^ mc.player.getUUID().getLeastSignificantBits();
+        if (colorMap == null || seed != colorSeed) {
+            colorSeed = seed;
+            List<Block> order = new ArrayList<>(List.of(POOL));
+            java.util.Collections.shuffle(order, new java.util.Random(seed));
+            Map<Block, Block> m = new HashMap<>();
+            for (int i = 0; i < order.size(); i++) m.put(order.get(i), order.get((i + 1) % order.size()));
+            colorMap = m;
+        }
+        return colorMap;
+    }
+
+    /** Fuerza a repintar los chunks (por reflexion, para no depender del nombre exacto en cada version). */
+    private static void refreshChunks() {
+        try {
+            Object lr = Minecraft.class.getField("levelRenderer").get(Minecraft.getInstance());
+            lr.getClass().getMethod("allChanged").invoke(lr);
+        } catch (Throwable ignored) {
+            // si no se puede, los chunks se actualizaran poco a poco
+        }
     }
 
     /** Etapa/fase (1-4) de una condicion segun su etiqueta; 1 si no tiene. */
@@ -120,8 +171,8 @@ public final class ClientState {
 
     /** Pesos de pose con muelle amortiguado: dan el efecto "bouncy" (se pasan un poco y rebotan). */
     public static final class Blend {
-        final float[] w = new float[13];
-        final float[] v = new float[13];
+        final float[] w = new float[16];
+        final float[] v = new float[16];
         long last;
 
         public float w(int flag) {
@@ -163,7 +214,7 @@ public final class ClientState {
             b.last = now;
             float h = dt / 3f;
             for (int s = 0; s < 3; s++) {
-                for (int i = 0; i < 13; i++) {
+                for (int i = 0; i < 16; i++) {
                     float target = (flags >> i) & 1;
                     float a = 140f * (target - b.w[i]) - 9f * b.v[i];
                     b.v[i] += a * h;
@@ -173,7 +224,7 @@ public final class ClientState {
         }
         if (flags == 0) {
             boolean settled = true;
-            for (int i = 0; i < 13; i++) {
+            for (int i = 0; i < 16; i++) {
                 if (Math.abs(b.w[i]) > 0.01f || Math.abs(b.v[i]) > 0.02f) settled = false;
             }
             if (settled) {
@@ -203,18 +254,34 @@ public final class ClientState {
         return 0;
     }
 
-    /** Inclinacion de la camara en radianes (suavizada). */
+    /** Cambia a -1f si la camara se inclina hacia el lado contrario al torso. */
+    public static final float ROLL_SIGN = 1f;
+    private static long lastRollNs = 0;
+    private static long lastCamNs = 0;
+
+    /** True como mucho una vez por fotograma (por si hay varios puntos de enganche en la camara). */
+    public static boolean claimCameraFrame() {
+        long n = System.nanoTime();
+        if (n - lastCamNs < 3_000_000L) return false;
+        lastCamNs = n;
+        return true;
+    }
+
+    /** Inclinacion de la camara en radianes (suavizada por tiempo; 15 grados = 0,2618). */
     public static float cameraRoll() {
         Minecraft mc = Minecraft.getInstance();
         float target = 0f;
         if (mc.player != null) {
             Integer f = pose.get(mc.player.getUUID());
             if (f != null) {
-                if ((f & Condition.POSE_LEAN_R) != 0) target = 0.26f;
-                if ((f & Condition.POSE_LEAN_L) != 0) target = -0.26f;
+                if ((f & Condition.POSE_LEAN_R) != 0) target = 0.2618f;
+                if ((f & Condition.POSE_LEAN_L) != 0) target = -0.2618f;
             }
         }
-        roll += (target - roll) * 0.1f;
+        long nn = System.nanoTime();
+        float dt = lastRollNs == 0 ? 0.016f : Math.min(0.1f, (nn - lastRollNs) / 1_000_000_000f);
+        lastRollNs = nn;
+        roll += (target - roll) * (1f - (float) Math.exp(-dt * 6.0));
         double t = System.currentTimeMillis();
         float extra = 0f;
         if (has("tremors")) extra += 0.015f * (float) Math.sin(t * 0.045) + 0.01f * (float) Math.sin(t * 0.11);
@@ -222,6 +289,6 @@ public final class ClientState {
         if (has("concussion")) extra += 0.05f * (float) Math.sin(t / 350.0);
         if (has("heatstroke")) extra += 0.02f * (float) Math.sin(t / 500.0);
         if (has("migraine")) extra += 0.02f * (float) Math.sin(t / 250.0);
-        return roll + extra;
+        return (roll + extra) * ROLL_SIGN;
     }
 }

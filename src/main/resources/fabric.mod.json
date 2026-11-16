@@ -21,5 +21,13 @@
     "java": ">=25",
     "fabric-api": "*"
   },
-  "mixins": [{"config": "pandemonium.mixins.json", "environment": "client"}]
+  "mixins": [
+    {
+      "config": "pandemonium.mixins.json",
+      "environment": "client"
+    },
+    {
+      "config": "pandemonium.common.mixins.json"
+    }
+  ]
 }

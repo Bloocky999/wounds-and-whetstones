@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ScreenMixin {
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", at = @At("TAIL"))
     private void pandemonium$moodles(GuiGraphicsExtractor g, int mouseX, int mouseY, float partial, CallbackInfo ci) {
-        if (!MoodleRenderer.isInteractiveScreen(this)) return;
         Minecraft mc = Minecraft.getInstance();
+        if (!MoodleRenderer.isInteractive((Object) this)) return;
         ClientState.screenDrawMs = System.currentTimeMillis();
         MoodleRenderer.draw(g, mc, mouseX, mouseY, true);
     }

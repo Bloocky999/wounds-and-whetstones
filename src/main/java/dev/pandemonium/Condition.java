@@ -27,6 +27,8 @@ public abstract class Condition {
     public static final int POSE_FEEL = 2048;
     /** Desplomarse (narcolepsia, desmayo). */
     public static final int POSE_SLUMP = 4096;
+    /** Brazo izquierdo inutilizado, colgando. */
+    public static final int POSE_LAMEARM = 8192;
 
     public final String id;
     public final String name;

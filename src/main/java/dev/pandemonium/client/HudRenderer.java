@@ -42,6 +42,21 @@ public final class HudRenderer {
             case "bleeding" -> 0xDD2222;
             case "cat_allergy" -> 0xFFCC88;
             case "epilepsy" -> 0xFFFF66;
+            case "cold" -> 0xAADDEE;
+            case "gastroenteritis" -> 0x99BB44;
+            case "measles" -> 0xFF8899;
+            case "pinkeye" -> 0xFF77AA;
+            case "plague" -> 0x665544;
+            case "salmonella" -> 0xBBCC55;
+            case "parasites" -> 0xCC9966;
+            case "schizophrenia" -> 0xAA88DD;
+            case "kleptomania" -> 0xDDAA33;
+            case "lame_arm" -> 0xBBAA99;
+            case "bad_leg" -> 0xBBAA99;
+            case "night_blindness" -> 0x556699;
+            case "mutism" -> 0x999999;
+            case "stutter" -> 0xCCCCAA;
+            case "vertigo" -> 0x88AACC;
             case "food_poisoning" -> 0x88AA22;
             default -> 0xE0C050;
         };
@@ -64,85 +79,70 @@ public final class HudRenderer {
         }
     }
 
+    /** Doble latido 0..1 (ms dentro de un ciclo de 900). */
+    private static float heartbeat(long now) {
+        long ph = now % 900;
+        return Math.max(bump(ph, 0, 140), 0.7f * bump(ph, 220, 140));
+    }
+
+    private static float bump(long t, int start, int len) {
+        float x = (t - start) / (float) len;
+        if (x < 0f || x > 1f) return 0f;
+        return (float) Math.sin(x * Math.PI);
+    }
+
+    private static void spots(GuiGraphicsExtractor g, int w, int h, int seedBase, int count, int outer, int inner) {
+        long seed = 12345 + seedBase;
+        for (int i = 0; i < count; i++) {
+            seed = seed * 6364136223846793005L + 1442695040888963407L;
+            int rx = (int) ((seed >>> 33) % 1000);
+            seed = seed * 6364136223846793005L + 1442695040888963407L;
+            int ry = (int) ((seed >>> 33) % 1000);
+            int x = (i % 2 == 0) ? rx * w / 1000 / 6 : w - rx * w / 1000 / 6 - 4;
+            int y = ry * h / 1000;
+            g.fill(x, y, x + 4, y + 4, 0xCC000000 | outer);
+            g.fill(x + 1, y + 1, x + 3, y + 3, 0xFF000000 | inner);
+        }
+    }
+
     public static void extract(GuiGraphicsExtractor g, DeltaTracker tracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         int w = mc.getWindow().getGuiScaledWidth();
         int h = mc.getWindow().getGuiScaledHeight();
+        long now = System.currentTimeMillis();
 
-        // Efectos de pantalla
+        // ---- Efectos puntuales: todos en el borde de la pantalla (vineta)
         vignette(g, w, h, 0x226611, ClientState.fxLeft("sick") * 0.8f);
         vignette(g, w, h, 0x771111, ClientState.fxLeft("spasm"));
         vignette(g, w, h, 0x112200, ClientState.fxLeft("stage") * 1.2f);
         vignette(g, w, h, 0x000000, ClientState.fxLeft("vertigo"));
-        vignette(g, w, h, 0x220033, ClientState.fxLeft("anxiety") * 0.9f);
-        vignette(g, w, h, 0x333344, ClientState.fxLeft("gasp") * 0.7f);
-        float sneeze = ClientState.fxLeft("sneeze");
-        if (sneeze > 0) g.fill(0, 0, w, h, ((int) (sneeze * 120) << 24) | 0xFFFFFF);
-        float cgh = ClientState.fxLeft("cough");
-        if (cgh > 0) vignette(g, w, h, 0xCCCCBB, cgh * 0.5f);
-        float hic = ClientState.fxLeft("hiccup");
-        if (hic > 0) g.fill(0, 0, w, h, ((int) (hic * 60) << 24) | 0xFFFFAA);
-        float tic = ClientState.fxLeft("tic");
-        if (tic > 0) g.fill(0, (int) (h * 0.4f), w, (int) (h * 0.4f) + 6, ((int) (tic * 160) << 24) | 0x00FFFF);
+        vignette(g, w, h, 0xCCCCBB, ClientState.fxLeft("cough") * 0.5f);
+        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("sneeze") * 0.7f);
+        vignette(g, w, h, 0xFFFFAA, ClientState.fxLeft("hiccup") * 0.5f);
+        vignette(g, w, h, 0x00CCCC, ClientState.fxLeft("tic") * 0.6f);
+        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("ringing") * 0.6f);
+        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("tinnitus") * 0.18f);
+        vignette(g, w, h, 0xCCEEFF, ClientState.fxLeft("frost") * 0.6f);
+        vignette(g, w, h, 0x000000, Math.min(2.2f, ClientState.fxLeft("faint") * 3f));
+        vignette(g, w, h, 0x000011, ClientState.fxLeft("night") * 2.0f);
+
+        float anx = ClientState.fxLeft("anxiety");
+        if (anx > 0) vignette(g, w, h, 0x330044, anx * (0.3f + heartbeat(now)));
+        float gasp = ClientState.fxLeft("gasp");
+        if (gasp > 0) vignette(g, w, h, 0x000000, gasp * (0.4f + 0.5f * (float) Math.sin(now / 450.0)) * 1.2f);
+        if (ClientState.fxLeft("seizure") > 0) {
+            boolean on = (now / 70) % 2 == 0;
+            vignette(g, w, h, on ? 0xFFFFFF : 0x000000, 1.4f);
+        }
+
+        // Parpados: narcolepsia (cierra del todo) e insomnio / conjuntivitis (parpadeos)
         float sleep = ClientState.fxLeft("sleep");
         if (sleep > 0) {
-            float lid = Math.min(1f, sleep * 2f);
-            int half = (int) (h * 0.5f * lid);
+            int half = (int) (h * 0.5f * Math.min(1f, sleep * 2f));
             g.fill(0, 0, w, half, 0xFF000000);
             g.fill(0, h - half, w, h, 0xFF000000);
         }
-
-        long now = System.currentTimeMillis();
-        if (ClientState.has("frostbite")) {
-            vignette(g, w, h, 0xAADDFF, 0.55f);
-            for (int i = 0; i < 10; i++) {
-                int cx = (i % 2 == 0) ? 2 + i * 3 : w - 8 - i * 3;
-                int cy = (i < 5) ? 2 + i * 6 : h - 8 - (i - 5) * 6;
-                g.fill(cx, cy, cx + 5, cy + 5, 0xAAEEFFFF);
-            }
-        }
-        if (ClientState.has("heatstroke")) vignette(g, w, h, 0xFF6600, 0.4f + 0.25f * (float) Math.sin(now / 400.0));
-        if (ClientState.has("rabies")) vignette(g, w, h, 0x660000, 0.25f + 0.15f * (float) Math.sin(now / 300.0));
-        if (ClientState.has("migraine")) {
-            float s = 0.5f + 0.5f * (float) Math.sin(now / 180.0);
-            vignette(g, w, h, 0x000000, 0.6f);
-            g.fill(0, 0, w, h, ((int) (s * 45) << 24) | 0xFFFFFF);
-        }
-        if (ClientState.has("concussion")) vignette(g, w, h, 0xFFFFFF, 0.12f + 0.08f * (float) Math.sin(now / 350.0));
-        float ring = ClientState.fxLeft("ringing");
-        if (ring > 0) g.fill(0, 0, w, h, ((int) (ring * 90) << 24) | 0xFFFFFF);
-        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("tinnitus") * 0.18f);
-        float frost = ClientState.fxLeft("frost");
-        if (frost > 0) vignette(g, w, h, 0xFFFFFF, frost * 0.6f);
-        if (ClientState.has("pox")) {
-            long seed = 12345;
-            for (int i = 0; i < 32; i++) {
-                seed = seed * 6364136223846793005L + 1442695040888963407L;
-                int rx = (int) ((seed >>> 33) % 1000);
-                seed = seed * 6364136223846793005L + 1442695040888963407L;
-                int ry = (int) ((seed >>> 33) % 1000);
-                int x = (i % 2 == 0) ? rx * w / 1000 / 6 : w - rx * w / 1000 / 6 - 4;
-                int y = ry * h / 1000;
-                g.fill(x, y, x + 4, y + 4, 0xCCCC3344);
-                g.fill(x + 1, y + 1, x + 3, y + 3, 0xFFFF8899);
-            }
-        }
-
-        if (ClientState.has("colorblind")) g.fill(0, 0, w, h, 0x70808080);
-        if (ClientState.has("bleeding")) {
-            vignette(g, w, h, 0x880000, 0.3f + 0.1f * (float) Math.sin(now / 200.0));
-            for (int i = 0; i < 5; i++) {
-                int x = w * (i + 1) / 6;
-                int len = (int) ((now / 12 + i * 37) % 120);
-                g.fill(x, 0, x + 3, len, 0xAAAA0000);
-                g.fill(x - 1, len, x + 4, len + 4, 0xCCAA0000);
-            }
-        }
-        float seizure = ClientState.fxLeft("seizure");
-        if (seizure > 0) g.fill(0, 0, w, h, ((now / 60) % 2 == 0) ? 0xB0FFFFFF : 0xB0000000);
-        float faint = ClientState.fxLeft("faint");
-        if (faint > 0) vignette(g, w, h, 0x000000, Math.min(2.2f, faint * 3f));
         float ins = ClientState.fxLeft("insomnia");
         if (ins > 0) {
             int hb = (int) (h * 0.08f * (0.5f + 0.5f * Math.sin(now / 90.0)) * ins);
@@ -150,15 +150,34 @@ public final class HudRenderer {
             g.fill(0, h - hb, w, h, 0xFF000000);
         }
 
+        // ---- Efectos mientras tienes la condicion (bordes, con entrada suave)
+        if (ClientState.has("frostbite")) vignette(g, w, h, 0xAADDFF, 0.55f * ClientState.fade("frostbite"));
+        if (ClientState.has("heatstroke")) {
+            vignette(g, w, h, 0xFF6600, (0.4f + 0.25f * (float) Math.sin(now / 400.0)) * ClientState.fade("heatstroke"));
+        }
+        if (ClientState.has("rabies")) vignette(g, w, h, 0x660000, 0.25f + 0.15f * (float) Math.sin(now / 300.0));
+        if (ClientState.has("bleeding")) vignette(g, w, h, 0x880000, 0.3f + 0.1f * (float) Math.sin(now / 200.0));
+        if (ClientState.has("concussion")) vignette(g, w, h, 0xFFFFFF, 0.12f + 0.08f * (float) Math.sin(now / 350.0));
+        if (ClientState.has("migraine")) {
+            vignette(g, w, h, 0x000000, 0.6f);
+            vignette(g, w, h, 0xFFFFFF, 0.5f * (0.5f + 0.5f * (float) Math.sin(now / 180.0)));
+        }
+        if (ClientState.has("pinkeye")) vignette(g, w, h, 0xFF3355, 0.4f * ClientState.fade("pinkeye"));
+        if (ClientState.has("plague")) vignette(g, w, h, 0x221100, 0.5f);
+
+        // Granitos en los bordes (varicela, sarampion, peste)
+        if (ClientState.has("pox")) spots(g, w, h, 0, 32, 0xCC3344, 0xFF8899);
+        if (ClientState.has("measles")) spots(g, w, h, 777, 40, 0xCC3355, 0xFF99AA);
+        if (ClientState.has("plague") && ClientState.severity("plague") >= 2) {
+            spots(g, w, h, 999, 14 + ClientState.severity("plague") * 8, 0x221122, 0x553344);
+        }
+
         if (ClientState.has("blindness")) sonar(g, mc, w, h);
 
-        EffectsRenderer.draw(g, mc, w, h, now);
-
-        // Temporizador global (modo programado) y aviso de dosis
+        // ---- Aviso de dosis y temporizador global (modo programado)
         float dose = ClientState.fxLeft("dose");
         if (dose > 0) {
             vignette(g, w, h, 0xCC0000, dose * 1.6f);
-            g.fill(0, 0, w, h, ((int) (dose * dose * 110) << 24) | 0xFFFFFF);
             String title = "¡NUEVA CONDICIÓN!";
             g.text(mc.font, title, (w - mc.font.width(title)) / 2, h / 3, 0xFFFF4444, true);
         }
@@ -180,7 +199,7 @@ public final class HudRenderer {
             g.fill(bx + 4, 19, bx + 4 + (int) ((bw - 8) * frac), 21, 0xFF000000 | col);
         }
 
-        // Tarea del TOC
+        // ---- Tarea del TOC
         if (!ClientState.taskText.isEmpty()) {
             long left = ClientState.taskEnd - System.currentTimeMillis();
             if (left > 0) {
@@ -191,9 +210,17 @@ public final class HudRenderer {
             }
         }
 
-        // Moodles (con tooltip al pasar el raton con el chat o el inventario abiertos)
-        if (System.currentTimeMillis() - ClientState.screenDrawMs >= 300) {
-            MoodleRenderer.draw(g, mc, -1, -1, false);
+        // ---- Moodles (con tooltip al pasar el raton con el chat o el inventario abiertos)
+        boolean interactiveScreen = MoodleRenderer.isInteractiveScreen(mc);
+        boolean mixinHandles = interactiveScreen && System.currentTimeMillis() - ClientState.screenDrawMs < 300;
+        if (!mixinHandles) {
+            int mx = -1;
+            int my = -1;
+            if (interactiveScreen) {
+                mx = (int) (mc.mouseHandler.xpos() * w / mc.getWindow().getScreenWidth());
+                my = (int) (mc.mouseHandler.ypos() * h / mc.getWindow().getScreenHeight());
+            }
+            MoodleRenderer.draw(g, mc, mx, my, interactiveScreen);
         }
     }
 

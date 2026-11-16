@@ -7,6 +7,8 @@ import java.util.UUID;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.minecraft.network.chat.Component;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -55,6 +57,19 @@ public final class Triggers {
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, be) -> {
             if (player instanceof ServerPlayer p) Conditions.ocdBreak(p, state);
         });
+        ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
+            if (ConditionStore.has(sender, Conditions.MUTISM)) {
+                Fx.bar(sender, "§8Intentas hablar, pero no te sale la voz...");
+                return false;
+            }
+            if (ConditionStore.has(sender, Conditions.STUTTER)) {
+                String text = Conditions.stutter(message.decoratedContent().getString(), sender);
+                Fx.server(sender).getPlayerList().broadcastSystemMessage(
+                        Component.literal("<" + sender.getName().getString() + "> " + text), false);
+                return false;
+            }
+            return true;
+        });
         ServerTickEvents.END_SERVER_TICK.register(Triggers::onTick);
     }
 
@@ -96,6 +111,17 @@ public final class Triggers {
             maybe(p, 0.03f, Conditions.EPILEPSY);
             if (ConditionStore.has(p, Conditions.EPILEPSY) && p.getRandom().nextFloat() < 0.15f) Conditions.startSeizure(p);
         }
+        if (attacker != null && attacker.getType().getCategory() == MobCategory.MONSTER) maybe(p, 0.02f, Conditions.STUTTER);
+        if (attacker != null && attacker.getType() == EntityTypes.ENDERMAN) maybe(p, 0.20f, Conditions.SCHIZOPHRENIA);
+        if (attacker != null && (attacker.getType() == EntityTypes.PILLAGER || attacker.getType() == EntityTypes.VINDICATOR)) {
+            maybe(p, 0.08f, Conditions.KLEPTOMANIA);
+        }
+        if (taken >= 9f) maybe(p, 0.05f, Conditions.LAME_ARM);
+        for (Conditions.Spread sp : Conditions.SPREADS) {
+            if (attacker instanceof ServerPlayer o && ConditionStore.has(o, sp.virus()) && Conditions.spreads(o, p, sp.hitChance())) {
+                ConditionStore.give(p, sp.virus());
+            }
+        }
         if (!source.is(DamageTypes.FALL) && taken >= 7f) maybe(p, 0.15f, Conditions.CONCUSSION);
         if (taken >= 10f) maybe(p, 0.06f, Conditions.TREMORS);
         if (attacker != null && attacker.getType() == EntityTypes.BEE) {
@@ -112,6 +138,8 @@ public final class Triggers {
             if (taken >= 4f) maybe(p, 0.15f, Conditions.ACROPHOBIA);
             if (taken >= 4f) maybe(p, 0.15f, Conditions.SPRAIN);
             if (taken >= 8f) maybe(p, 0.10f, Conditions.ARTHROSIS);
+            if (taken >= 8f) maybe(p, 0.12f, Conditions.BAD_LEG);
+            if (taken >= 6f) maybe(p, 0.05f, Conditions.VERTIGO);
             if (ConditionStore.has(p, Conditions.BRITTLE_BONES)) {
                 // Huesos fragiles: se repite el mismo dano una vez mas (sin llegar a matar por si solo)
                 p.setHealth(Math.max(0.5f, p.getHealth() - taken));
@@ -119,6 +147,7 @@ public final class Triggers {
         }
         if (source.is(DamageTypes.DROWN)) {
             maybe(p, 0.30f, Conditions.ASTHMA);
+            maybe(p, 0.08f, Conditions.MUTISM);
         }
         if (source.is(DamageTypes.LIGHTNING_BOLT)) {
             maybe(p, 0.60f, Conditions.TOURETTE);
@@ -127,6 +156,8 @@ public final class Triggers {
             maybe(p, 0.15f, Conditions.EPILEPSY);
             if (ConditionStore.has(p, Conditions.EPILEPSY)) Conditions.startSeizure(p);
             maybe(p, 0.20f, Conditions.MIGRAINE);
+            maybe(p, 0.10f, Conditions.SCHIZOPHRENIA);
+            maybe(p, 0.08f, Conditions.NIGHT_BLINDNESS);
         }
         if (source.is(DamageTypes.EXPLOSION) || source.is(DamageTypes.PLAYER_EXPLOSION)) {
             maybe(p, 0.35f, Conditions.DEMENTIA);
@@ -186,6 +217,18 @@ public final class Triggers {
             }
             if (p.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)) > 48000) maybe(p, 0.002f, Conditions.MIGRAINE);
             maybe(p, 1f / 5000f, Conditions.POX);
+            String raw = Conditions.rawEaten(p);
+            if (raw != null) rawFood(p, raw);
+            if (p.hasEffect(MobEffects.WITHER)) maybe(p, 0.02f, Conditions.NIGHT_BLINDNESS);
+            if (p.isFreezing()) maybe(p, 0.012f, Conditions.COLD);
+            else if (p.isInWaterOrRain() && !p.isInWater()) maybe(p, 0.004f, Conditions.COLD);
+            maybe(p, 1f / 12000f, Conditions.MEASLES);
+            maybe(p, 1f / 12000f, Conditions.PINKEYE);
+            maybe(p, 1f / 10000f, Conditions.GASTRO);
+            maybe(p, 1f / 20000f, Conditions.PLAGUE);
+            maybe(p, 1f / 9000f, Conditions.KLEPTOMANIA);
+            maybe(p, 1f / 20000f, Conditions.NIGHT_BLINDNESS);
+            if (p.getStats().getValue(Stats.CUSTOM.get(Stats.TIME_SINCE_REST)) > 144000) maybe(p, 0.001f, Conditions.SCHIZOPHRENIA);
             if (p.getFoodData().getFoodLevel() <= 4) maybe(p, 0.02f, Conditions.ANEMIA);
             if (p.isPassenger()) maybe(p, 0.01f, Conditions.MOTION_SICKNESS);
             if (Conditions.nearType(p, 3, EntityTypes.CAT, EntityTypes.OCELOT)) maybe(p, 0.01f, Conditions.CAT_ALLERGY);
@@ -213,5 +256,21 @@ public final class Triggers {
                 maybe(p, 0.003f, Conditions.NARCOLEPSY);
             }
         }
+    }
+
+    /** Carne cruda: probabilidad de salmonela y de parasitos segun el tipo. */
+    private static void rawFood(ServerPlayer p, String raw) {
+        float sal;
+        float par;
+        switch (raw) {
+            case "pork" -> { sal = 0.30f; par = 0.20f; }
+            case "chicken" -> { sal = 0.30f; par = 0.10f; }
+            case "beef", "mutton" -> { sal = 0.12f; par = 0.06f; }
+            case "rabbit" -> { sal = 0.20f; par = 0.10f; }
+            case "cod", "salmon" -> { sal = 0.06f; par = 0.15f; }
+            default -> { sal = 0.50f; par = 0.20f; }
+        }
+        maybe(p, sal, Conditions.SALMONELLA);
+        maybe(p, par, Conditions.PARASITES);
     }
 }
