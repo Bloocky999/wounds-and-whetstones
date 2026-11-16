@@ -1280,7 +1280,7 @@ public final class Conditions {
                 if (!off.isEmpty()) {
                     ItemStack dropped = off.copy();
                     p.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
-                    p.drop(dropped, true, false);
+                    p.drop(dropped, true, net.minecraft.util.Prediction.SERVER_ONLY);
                     Fx.bar(p, "§8El brazo no responde: se te cae el objeto.");
                 }
             }

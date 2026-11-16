@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.util.Prediction;
 
 /** A real anvil interaction: blooms consolidate and shaped blanks become forged weapons. */
 public final class ForgeHammerItem extends Item {
@@ -29,7 +30,9 @@ public final class ForgeHammerItem extends Item {
 
         ItemStack output = null;
         String message = null;
-        for (ItemStack stack : player.getInventory().items) {
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
             if (stack.is(ForgingItems.COPPER_BLOOM)) {
                 stack.shrink(1);
                 output = new ItemStack(ForgingItems.COPPER_INGOT);
@@ -56,14 +59,14 @@ public final class ForgeHammerItem extends Item {
             }
         }
         if (output == null) {
-            player.displayClientMessage(Component.literal("§7El yunque necesita una esponja de cobre o una hoja en bruto."), true);
+            player.sendOverlayMessage(Component.literal("§7El yunque necesita una esponja de cobre o una hoja en bruto."));
             return InteractionResult.CONSUME;
         }
-        if (!player.getInventory().add(output)) player.drop(output, false, false);
+        if (!inventory.add(output)) player.drop(output, false, Prediction.SERVER_ONLY);
         context.getItemInHand().hurtAndBreak(1, player,
                 context.getHand() == net.minecraft.world.InteractionHand.MAIN_HAND
                         ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND);
-        player.displayClientMessage(Component.literal("§6" + message), true);
+        player.sendOverlayMessage(Component.literal("§6" + message));
         level.levelEvent(1021, pos, 0);
         return InteractionResult.SUCCESS;
     }
