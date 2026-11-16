@@ -78,7 +78,7 @@ public abstract class HumanoidModelMixin {
         float cough = b.w(Condition.POSE_COUGH);
         if (cough != 0f) {
             bx += 0.15f * cough;
-            head.xRot += (0.35f + (float) Math.sin(age * 2.2f) * 0.1f) * cough;
+            head.xRot += (0.35f + (float) Math.sin(age * 1.25f) * 0.1f) * cough;
             rightArm.xRot = lerp(rightArm.xRot, -2.0f, cough);
             rightArm.yRot = lerp(rightArm.yRot, -0.5f, cough);
         }

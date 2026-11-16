@@ -108,8 +108,12 @@ public final class ClientState {
     /** Fuerza a repintar los chunks (por reflexion, para no depender del nombre exacto en cada version). */
     private static void refreshChunks() {
         try {
-            Object lr = Minecraft.class.getField("levelRenderer").get(Minecraft.getInstance());
-            lr.getClass().getMethod("allChanged").invoke(lr);
+            var field = Minecraft.class.getDeclaredField("levelRenderer");
+            field.setAccessible(true);
+            Object lr = field.get(Minecraft.getInstance());
+            var allChanged = lr.getClass().getDeclaredMethod("allChanged");
+            allChanged.setAccessible(true);
+            allChanged.invoke(lr);
         } catch (Throwable ignored) {
             // si no se puede, los chunks se actualizaran poco a poco
         }

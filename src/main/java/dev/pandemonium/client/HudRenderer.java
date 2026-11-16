@@ -121,8 +121,21 @@ public final class HudRenderer {
         vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("sneeze") * 0.7f);
         vignette(g, w, h, 0xFFFFAA, ClientState.fxLeft("hiccup") * 0.5f);
         vignette(g, w, h, 0x00CCCC, ClientState.fxLeft("tic") * 0.6f);
-        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("ringing") * 0.6f);
-        vignette(g, w, h, 0xFFFFFF, ClientState.fxLeft("tinnitus") * 0.18f);
+        float ringing = Math.max(ClientState.fxLeft("ringing"), ClientState.fxLeft("tinnitus"));
+        vignette(g, w, h, 0xD8F5FF, ringing * 0.28f);
+        if (ringing > 0f) {
+            // Ondas finas y expansivas para el pitido: legibles sin tapar el centro de la vista.
+            int cx = w / 2, cy = h / 2;
+            for (int i = 0; i < 3; i++) {
+                int radius = 12 + (int) ((now / 18 + i * 21) % 72);
+                int alpha = (int) (Math.min(0.55f, ringing) * 150);
+                int color = (alpha << 24) | 0xBDEEFF;
+                g.fill(cx - radius, cy - radius, cx + radius, cy - radius + 1, color);
+                g.fill(cx - radius, cy + radius - 1, cx + radius, cy + radius, color);
+                g.fill(cx - radius, cy - radius, cx - radius + 1, cy + radius, color);
+                g.fill(cx + radius - 1, cy - radius, cx + radius, cy + radius, color);
+            }
+        }
         vignette(g, w, h, 0xCCEEFF, ClientState.fxLeft("frost") * 0.6f);
         vignette(g, w, h, 0x000000, Math.min(2.2f, ClientState.fxLeft("faint") * 3f));
         vignette(g, w, h, 0x000011, ClientState.fxLeft("night") * 2.0f);

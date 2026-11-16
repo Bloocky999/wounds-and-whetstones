@@ -15,9 +15,8 @@ public abstract class CameraMixin {
     @Shadow
     public abstract Quaternionf rotation();
 
-    @Inject(method = {"setup", "update"}, at = @At("TAIL"), require = 0)
+    @Inject(method = "setRotation(FF)V", at = @At("TAIL"), require = 0)
     private void pandemonium$roll(CallbackInfo ci) {
-        if (!ClientState.claimCameraFrame()) return;
         float roll = ClientState.cameraRoll();
         if (Math.abs(roll) > 0.001f) {
             this.rotation().rotateZ(roll);

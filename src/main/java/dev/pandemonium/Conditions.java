@@ -261,7 +261,7 @@ public final class Conditions {
             if (Fx.due(p, id, now, 60, 160) && Fx.nearFlowers(p, 4)) {
                 Fx.jerk(p, Fx.rf(p, 8f), 22f);
                 Fx.effect(p, MobEffects.NAUSEA, 60, 0);
-                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 1.0f, 1.2f);
+                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 1.0f, 0.72f);
                 Fx.bar(p, "§e¡ACHÚS!");
                 Payloads.fx(p, "sneeze", 24);
                 Fx.spray(p, ParticleTypes.SNEEZE, 10, 0.25, 0.5);
@@ -750,13 +750,13 @@ public final class Conditions {
         @Override
         public void tick(ServerPlayer p, long now) {
             if (Fx.due(p, id + ":b", now, 50, 110)) {
-                Fx.sound(p, SoundEvents.AMETHYST_BLOCK_CHIME, 0.25f, 2.0f);
-                Payloads.fx(p, "tinnitus", 30);
+                Fx.sound(p, SoundEvents.NOTE_BLOCK_CHIME.value(), 0.55f, 2.4f);
+                Payloads.fx(p, "tinnitus", 80);
             }
             if (Fx.due(p, id + ":l", now, 1200, 3000)) {
                 Fx.effect(p, MobEffects.NAUSEA, 60, 0);
-                Fx.sound(p, SoundEvents.NOTE_BLOCK_CHIME.value(), 1.0f, 2.0f);
-                Payloads.fx(p, "ringing", 40);
+                Fx.sound(p, SoundEvents.NOTE_BLOCK_CHIME.value(), 0.8f, 2.5f);
+                Payloads.fx(p, "ringing", 90);
                 Fx.bar(p, "§7iiiiiiiiiiiii...");
             }
         }
@@ -931,7 +931,7 @@ public final class Conditions {
             if (Fx.due(p, id, now, 60, 160) && nearType(p, 4, EntityTypes.CAT, EntityTypes.OCELOT)) {
                 Fx.jerk(p, Fx.rf(p, 8f), 22f);
                 Fx.effect(p, MobEffects.NAUSEA, 60, 0);
-                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 1.0f, 1.3f);
+                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 1.0f, 0.72f);
                 Fx.bar(p, "§e¡ACHÚS! (gatos)");
                 Payloads.fx(p, "sneeze", 24);
                 Fx.spray(p, ParticleTypes.SNEEZE, 10, 0.25, 0.5);
@@ -1029,7 +1029,7 @@ public final class Conditions {
         public void tick(ServerPlayer p, long now) {
             if (Fx.due(p, id + ":s", now, 400, 900)) {
                 Fx.jerk(p, Fx.rf(p, 8f), 18f);
-                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 0.9f, 1.4f);
+                Fx.sound(p, SoundEvents.PANDA_SNEEZE, 1.0f, 0.72f);
                 Fx.spray(p, ParticleTypes.SNEEZE, 8, 0.25, 0.5);
                 Fx.bar(p, "§e¡Achís!");
                 Payloads.fx(p, "sneeze", 20);
@@ -1277,9 +1277,11 @@ public final class Conditions {
         public void tick(ServerPlayer p, long now) {
             if (now % 10 == 0) {
                 ItemStack off = p.getOffhandItem();
-                if (!off.isEmpty() && p.getInventory().add(off.copy())) {
+                if (!off.isEmpty()) {
+                    ItemStack dropped = off.copy();
                     p.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
-                    Fx.bar(p, "§8No puedes usar ese brazo.");
+                    p.drop(dropped, true, false);
+                    Fx.bar(p, "§8El brazo no responde: se te cae el objeto.");
                 }
             }
             if (now % 40 == 0) Fx.effectHidden(p, MobEffects.MINING_FATIGUE, 50, 0);
@@ -1496,11 +1498,11 @@ public final class Conditions {
     public static void cough(ServerPlayer p, Condition virus, float chance) {
         boolean covered = protection(p) < 0.5f;
         Fx.spray(p, ParticleTypes.CLOUD, covered ? 2 : 8, 0.15, 0.35);
-        Fx.sound(p, SoundEvents.PLAYER_BREATH, covered ? 0.5f : 1.0f, 0.7f);
+        Fx.sound(p, SoundEvents.PLAYER_HURT, covered ? 0.45f : 0.8f, 0.68f);
         Fx.jerk(p, Fx.rf(p, 3f), 6f);
         Fx.bar(p, covered ? "§7*cof* (con mascarilla)" : "§e*COF COF*");
-        Payloads.fx(p, "cough", 12);
-        Fx.pose(p, Condition.POSE_COUGH, 12);
+        Payloads.fx(p, "cough", 24);
+        Fx.pose(p, Condition.POSE_COUGH, 24);
         spreadFront(p, virus, chance);
     }
 
