@@ -72,8 +72,8 @@ public final class MoodleRenderer {
     private MoodleRenderer() {}
 
     /** True si hay chat o inventario abierto (se puede pasar el raton). */
-    public static boolean isInteractiveScreen(Minecraft mc) {
-        return mc.getScreen() instanceof ChatScreen || mc.getScreen() instanceof AbstractContainerScreen<?>;
+    public static boolean isInteractiveScreen(Object screen) {
+        return screen instanceof ChatScreen || screen instanceof AbstractContainerScreen<?>;
     }
 
     private static int severity(ClientState.Entry e) {

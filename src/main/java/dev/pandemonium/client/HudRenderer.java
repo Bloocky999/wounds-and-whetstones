@@ -192,15 +192,8 @@ public final class HudRenderer {
         }
 
         // Moodles (con tooltip al pasar el raton con el chat o el inventario abiertos)
-        boolean interactiveScreen = MoodleRenderer.isInteractiveScreen(mc);
-        boolean mixinHandles = interactiveScreen && System.currentTimeMillis() - ClientState.screenDrawMs < 300;
-        if (!mixinHandles) {
-            int mx = -1, my = -1;
-            if (interactiveScreen) {
-                mx = (int) (mc.mouseHandler.xpos() * w / mc.getWindow().getScreenWidth());
-                my = (int) (mc.mouseHandler.ypos() * h / mc.getWindow().getScreenHeight());
-            }
-            MoodleRenderer.draw(g, mc, mx, my, interactiveScreen);
+        if (System.currentTimeMillis() - ClientState.screenDrawMs >= 300) {
+            MoodleRenderer.draw(g, mc, -1, -1, false);
         }
     }
 
