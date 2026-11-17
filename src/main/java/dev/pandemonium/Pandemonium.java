@@ -17,6 +17,7 @@ public class Pandemonium implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        ForgingItems.register();
         ServerLifecycleEvents.SERVER_STARTED.register(ConditionStore::load);
         ServerLifecycleEvents.SERVER_STARTED.register(Settings::load);
         ServerLifecycleEvents.SERVER_STOPPING.register(ConditionStore::save);
@@ -34,8 +35,11 @@ public class Pandemonium implements ModInitializer {
         });
 
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> Payloads.sync(newPlayer));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                ForgeSmithing.disconnect(handler.getPlayer().getUUID()));
 
         Payloads.register();
+        ForgePayloads.register();
         Triggers.register();
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess, environment) -> PandemoniumCommands.register(dispatcher));

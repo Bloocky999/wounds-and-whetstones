@@ -2,6 +2,7 @@ package dev.pandemonium.client;
 
 import dev.pandemonium.Payloads;
 import dev.pandemonium.Pandemonium;
+import dev.pandemonium.ForgePayloads;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -20,6 +21,8 @@ public class PandemoniumClient implements ClientModInitializer {
                 (payload, context) -> context.client().execute(() -> ClientState.task(payload.text(), payload.ticks())));
         ClientPlayNetworking.registerGlobalReceiver(Payloads.PosePayload.TYPE,
                 (payload, context) -> context.client().execute(() -> ClientState.setPose(payload.entries())));
+        ClientPlayNetworking.registerGlobalReceiver(ForgePayloads.State.TYPE,
+                (payload, context) -> context.client().execute(() -> ForgeScreen.receive(payload.encoded())));
 
         ClientPlayNetworking.registerGlobalReceiver(Payloads.TimerPayload.TYPE,
                 (payload, context) -> context.client().execute(
