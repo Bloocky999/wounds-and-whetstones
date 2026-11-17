@@ -1,8 +1,0 @@
-{
-  "type": "minecraft:blasting",
-  "category": "misc",
-  "ingredient": "minecraft:raw_iron",
-  "result": { "id": "pandemonium:iron_bloom" },
-  "experience": 0.3,
-  "cookingtime": 200
-}

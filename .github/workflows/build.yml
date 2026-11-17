@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wounds-and-whetstones-jar
+          name: hammer-and-hearth-jar
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar

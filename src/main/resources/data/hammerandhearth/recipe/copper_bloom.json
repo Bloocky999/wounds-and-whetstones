@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "ingredient": "hammerandhearth:native_copper",
+  "result": { "id": "hammerandhearth:copper_bloom" },
+  "experience": 0.3,
+  "cookingtime": 200
+}

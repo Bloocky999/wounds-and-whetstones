@@ -1,33 +1,20 @@
 {
   "schemaVersion": 1,
-  "id": "pandemonium",
+  "id": "hammerandhearth",
   "version": "${version}",
-  "name": "Wounds & Whetstones",
-  "description": "Supervivencia con enfermedades, fobias, discapacidades, moodles y metalurgia de armas forjadas.",
-  "authors": [],
+  "name": "Hammer & Hearth",
+  "description": "Vintage-inspired metalworking: smelt blooms, shape every blade pixel with a hammer, and assemble custom weapons.",
+  "authors": ["Bloocky999"],
   "license": "All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {
-    "main": [
-      "dev.pandemonium.Pandemonium"
-    ],
-    "client": [
-      "dev.pandemonium.client.PandemoniumClient"
-    ]
+    "main": ["dev.hammerandhearth.HammerAndHearth"],
+    "client": ["dev.hammerandhearth.client.HammerAndHearthClient"]
   },
   "depends": {
     "fabricloader": ">=0.19.0",
     "minecraft": "~26.3",
     "java": ">=25",
     "fabric-api": "*"
-  },
-  "mixins": [
-    {
-      "config": "pandemonium.mixins.json",
-      "environment": "client"
-    },
-    {
-      "config": "pandemonium.common.mixins.json"
-    }
-  ]
+  }
 }

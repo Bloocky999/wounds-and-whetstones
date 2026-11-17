@@ -1,45 +1,32 @@
-# Wounds & Whetstones
+# Hammer & Hearth
 
-Un mod de supervivencia para Fabric con enfermedades, fobias, discapacidades, moodles y una progresión de metalurgia y armas forjadas.
+A standalone Fabric mod focused on slow, hands-on metalworking and custom forged weapons. Its mod ID is `hammerandhearth`; it does not include Pandemonium's conditions, moodles, masks, camera effects, or commands.
 
-## Compatibilidad
+## Compatibility
 
 - Minecraft **26.3**
-- Fabric Loader **0.19.0 o posterior**
+- Fabric Loader **0.19.0 or later**
 - Java **25**
 - Fabric API
 
-El mod debe instalarse en el servidor o en el mundo integrado que lo aloja. Los clientes sin el mod pueden conectarse; quienes lo instalen también verán el panel de moodles y los efectos visuales.
+Install the mod on both the client and the server. The forging screen is a client/server minigame.
 
-## Metalurgia y forja
+## Forging a weapon
 
-- Tuesta mineral de cobre en un crisol sobre una fogata encendida para obtener trozos de cobre.
-- Fúndelos en un alto horno para formar una esponja de cobre; consolídala con el martillo sobre un yunque.
-- Fabrica una hoja en bruto y trabaja de nuevo sobre el yunque para forjar una espada de cobre.
-- El hierro sigue una ruta parecida: mineral crudo, alto horno, esponja, yunque, hoja y espada.
-- El martillo y el crisol se desgastan con el uso. El cobre golpea con menos fuerza y se desgasta antes que el hierro.
+1. Roast raw copper in a crucible over a lit campfire, smelt native copper into a bloom, and consolidate the bloom on an anvil with a forge hammer. Iron uses the corresponding vanilla ore and bloomery route.
+2. Craft a blade billet from two ingots. Carry the billet, a forge hammer, and one handle material: a stick, bone, leather, or iron nugget.
+3. Use the hammer on an anvil. Click individual cells on the 16×16 billet to strike them away. Right-click restores the last removed cell. Every strike wears the hammer.
+4. Shape a connected blade, keep enough metal in the tang, and refine the cutting edge and point. The profile determines damage, durability, and enchantability.
+5. Select a handle and finish the sword. Handle material changes attack speed and also influences durability or enchantability.
 
-### Minijuego de forja
+## Install the built jar
 
-1. Fabrica un tocho con dos lingotes y colócate con el martillo ante un yunque.
-2. Haz clic en los píxeles de la plancha para golpearlos y retirarlos; con clic derecho corriges el último golpe.
-3. Conserva un espigo conectado, afina la punta y talla el filo superior. La longitud, el afilado y el metal conservado determinan daño, durabilidad y encantabilidad.
-4. Elige una empuñadura de madera, hueso, cuero o hierro. Cambia la velocidad de ataque y también puede modificar el aguante y la encantabilidad.
-5. Termina la forja cuando la silueta sea válida. Cancelar conserva el tocho y la empuñadura.
+Download `hammer-and-hearth-0.2.0.jar` from the GitHub Actions artifact or the Releases page and place it in the `mods` folder for both Minecraft client and server.
 
-## Instalación
+## Build
 
-1. Instala Fabric Loader para Minecraft 26.3, Java 25 y Fabric API.
-2. Descarga `wounds-and-whetstones-<versión>.jar` desde **Releases** o desde el artefacto de compilación de GitHub Actions.
-3. Coloca el `.jar` en la carpeta `mods` del servidor. Instálalo también en el cliente para mostrar moodles y efectos visuales.
-4. La forja pixel a pixel requiere que el mod esté instalado también en el cliente.
+Requires Java 25 and Gradle. Run `gradle build --no-daemon`; the mod jar is written to `build/libs/`.
 
-## Compilar desde el código
+## License
 
-Requiere Java 25 y Gradle. Ejecuta `gradle build --no-daemon`; el `.jar` se genera en `build/libs/`.
-
-## Créditos y licencia
-
-Código y contenido del mod: Bloocky999. Utiliza Fabric Loader, Fabric API y recursos visuales vanilla de Minecraft.
-
-Licencia actual: **All Rights Reserved**. No se concede permiso para redistribuir o modificar el código sin autorización del autor.
+All Rights Reserved. Code and original mod content by Bloocky999. Fabric Loader and Fabric API are separate dependencies.
