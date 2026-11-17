@@ -21,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantable;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.server.level.ServerPlayer;
@@ -96,7 +97,7 @@ public final class ForgeSmithing {
     }
 
     private static void strike(ServerPlayer player, Session s, int cell, boolean undo) {
-        long tick = player.server.getTickCount();
+        long tick = player.level().getGameTime();
         if (tick - s.lastStrike < 2 || !hasHammer(player, s)) return;
         int target;
         if (undo) {
@@ -116,7 +117,7 @@ public final class ForgeSmithing {
         }
         s.message = undo ? "Recalientas y corriges el último golpe." : "Golpe " + s.hits + ": quitas un píxel de metal.";
         hurtHammer(player, s);
-        player.swing(s.hammerHand);
+        player.swing(s.hammerHand, SwingAnimation.DEFAULT, true);
         player.level().playSound(null, s.anvil, SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 0.75f, 0.85f + player.getRandom().nextFloat() * 0.2f);
         sendState(player, s, false);
     }

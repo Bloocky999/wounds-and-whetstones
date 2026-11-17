@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /** Pixel-for-pixel smithing bench: each removed square is one server-validated hammer strike. */
@@ -163,12 +164,15 @@ public final class ForgeScreen extends Screen {
     private String format(double value) { return String.format(java.util.Locale.ROOT, "%.2f", value); }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 1) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.buttonInfo().button();
+        if (button == 3) {
             send(1, 0);
             return true;
         }
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+        if (button != 1) return super.mouseClicked(event, doubleClick);
         int gx = (int) mouseX - gridX, gy = (int) mouseY - gridY;
         if (gx >= 0 && gy >= 0 && gx < ForgeMath.SIDE * CELL && gy < ForgeMath.SIDE * CELL) {
             send(0, ForgeMath.index(gx / CELL, gy / CELL));
@@ -188,7 +192,7 @@ public final class ForgeScreen extends Screen {
             send(4, 0);
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private static boolean inside(double x, double y, int left, int top, int width, int height) {
