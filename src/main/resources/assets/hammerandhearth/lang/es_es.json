@@ -8,5 +8,8 @@
   "item.hammerandhearth.copper_blade_blank": "Tocho de cobre para forja",
   "item.hammerandhearth.iron_blade_blank": "Tocho de hierro para forja",
   "item.hammerandhearth.forged_copper_sword": "Espada de cobre forjada",
-  "item.hammerandhearth.forged_iron_sword": "Espada de hierro forjada"
+  "item.hammerandhearth.forged_iron_sword": "Espada de hierro forjada",
+  "itemGroup.hammerandhearth.items": "Hammer & Hearth",
+  "advancements.hammerandhearth.recipes.title": "Manual del herrero",
+  "advancements.hammerandhearth.recipes.description": "Las recetas de herrería ya están disponibles en tu libro de recetas."
 }

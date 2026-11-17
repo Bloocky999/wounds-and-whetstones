@@ -1,0 +1,15 @@
+{
+  "item.hammerandhearth.native_copper": "Native Copper",
+  "item.hammerandhearth.copper_bloom": "Copper Bloom",
+  "item.hammerandhearth.copper_ingot": "Wrought Copper Ingot",
+  "item.hammerandhearth.iron_bloom": "Iron Bloom",
+  "item.hammerandhearth.crucible": "Clay Crucible",
+  "item.hammerandhearth.forge_hammer": "Forge Hammer",
+  "item.hammerandhearth.copper_blade_blank": "Copper Blade Billet",
+  "item.hammerandhearth.iron_blade_blank": "Iron Blade Billet",
+  "item.hammerandhearth.forged_copper_sword": "Forged Copper Sword",
+  "item.hammerandhearth.forged_iron_sword": "Forged Iron Sword",
+  "itemGroup.hammerandhearth.items": "Hammer & Hearth",
+  "advancements.hammerandhearth.recipes.title": "Smith's Manual",
+  "advancements.hammerandhearth.recipes.description": "Smithing recipes are now available in your recipe book."
+}

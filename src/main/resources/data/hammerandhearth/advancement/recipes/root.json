@@ -1,0 +1,38 @@
+{
+  "criteria": {
+    "first_tick": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "requirements": [
+    [
+      "first_tick"
+    ]
+  ],
+  "display": {
+    "icon": {
+      "id": "hammerandhearth:forge_hammer"
+    },
+    "title": {
+      "translate": "advancements.hammerandhearth.recipes.title"
+    },
+    "description": {
+      "translate": "advancements.hammerandhearth.recipes.description"
+    },
+    "background": "minecraft:textures/gui/advancements/backgrounds/stone.png",
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": true
+  },
+  "rewards": {
+    "recipes": [
+      "hammerandhearth:crucible",
+      "hammerandhearth:forge_hammer",
+      "hammerandhearth:copper_bloom",
+      "hammerandhearth:iron_bloom",
+      "hammerandhearth:copper_blade_blank",
+      "hammerandhearth:iron_blade_blank"
+    ]
+  }
+}

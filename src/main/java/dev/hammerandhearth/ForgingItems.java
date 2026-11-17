@@ -5,8 +5,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ToolMaterial;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 
 /** Items for the slow bloomery-to-forged-weapon progression. */
 public final class ForgingItems {
@@ -20,6 +24,23 @@ public final class ForgingItems {
     public static final Item IRON_BLADE = item("iron_blade_blank", 16);
     public static final Item FORGED_COPPER_SWORD = sword("forged_copper_sword", ToolMaterial.COPPER, 2.5f, -2.8f, 160);
     public static final Item FORGED_IRON_SWORD = sword("forged_iron_sword", ToolMaterial.IRON, 3.5f, -2.6f, 250);
+    private static final ResourceKey<CreativeModeTab> TAB_KEY = ResourceKey.create(
+            BuiltInRegistries.CREATIVE_MODE_TAB.key(), Identifier.fromNamespaceAndPath(HammerAndHearth.MOD_ID, "items"));
+    private static final CreativeModeTab TAB = FabricCreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.hammerandhearth.items"))
+            .icon(() -> new ItemStack(FORGE_HAMMER))
+            .displayItems((parameters, output) -> {
+                output.accept(CRUCIBLE);
+                output.accept(FORGE_HAMMER);
+                output.accept(COPPER_CHUNK);
+                output.accept(COPPER_BLOOM);
+                output.accept(COPPER_INGOT);
+                output.accept(IRON_BLOOM);
+                output.accept(COPPER_BLADE);
+                output.accept(IRON_BLADE);
+                output.accept(FORGED_COPPER_SWORD);
+                output.accept(FORGED_IRON_SWORD);
+            }).build();
 
     private ForgingItems() {}
 
@@ -51,6 +72,6 @@ public final class ForgingItems {
     }
 
     public static void register() {
-        // Class initialization registers the items before recipes are loaded.
+        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, TAB_KEY, TAB);
     }
 }

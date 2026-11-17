@@ -8,13 +8,19 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /** Pixel-for-pixel smithing bench: each removed square is one server-validated hammer strike. */
 public final class ForgeScreen extends Screen {
     private static final int CELL = 10;
     private static final int PANEL_W = 430;
     private static final int PANEL_H = 282;
-    private static final String[] HANDLES = {"Madera", "Hueso", "Cuero", "Hierro"};
+    private static final String[] HANDLES = {"Palo", "Hueso", "Cuero", "Hierro"};
+    private static final ItemStack[] HANDLE_ICONS = {
+            new ItemStack(Items.STICK), new ItemStack(Items.BONE),
+            new ItemStack(Items.LEATHER), new ItemStack(Items.IRON_NUGGET)
+    };
     private static ForgeScreen current;
 
     private String metal = "iron";
@@ -80,16 +86,18 @@ public final class ForgeScreen extends Screen {
         g.fill(left + 4, top + 4, left + PANEL_W - 4, top + PANEL_H - 4, 0xFF211F1C);
         g.fill(left + 7, top + 7, left + PANEL_W - 7, top + 25, 0xFF56432E);
         text(g, "FORJA DE PRECISIÓN", left + 14, top + 12, 0xFFFFD58A, true);
-        text(g, "Yunque · " + (metal.equals("copper") ? "Cobre" : "Hierro") + " · golpe " + hits,
-                gridX, top + 35, 0xFFE5D6B8, false);
+        text(g, "PLANCHA " + (metal.equals("copper") ? "DE COBRE" : "DE HIERRO"), gridX, top + 36, 0xFFE5D6B8, true);
+        text(g, "Golpes: " + hits, gridX + 101, top + 36, 0xFFCAB99E, false);
 
         drawAnvilGrid(g, mouseX, mouseY);
+        ForgeMath.Stats stats = ForgeMath.evaluate(metal, cells, handle);
+        drawGuide(g, stats);
         drawHandles(g, mouseX, mouseY);
-        drawStats(g);
-        text(g, fit(status, 48), left + 14, top + 224, 0xFFFFD58A, false);
-        button(g, left + 193, top + 250, 112, "Forjar espada", true, mouseX, mouseY);
-        button(g, left + 312, top + 250, 104, "Cancelar", false, mouseX, mouseY);
-        text(g, "Clic: quitar píxel · clic derecho: deshacer golpe", left + 14, top + 268, 0xFFB9AA92, false);
+        drawStats(g, stats);
+        text(g, fit(status, 44), left + 14, top + 221, 0xFFFFD58A, false);
+        button(g, left + 193, top + 250, 112, "Forjar espada", stats.valid(), mouseX, mouseY, stats.valid());
+        button(g, left + 312, top + 250, 104, "Salir", false, mouseX, mouseY);
+        text(g, "Izquierdo: golpear · Derecho: deshacer (gasta martillo)", left + 14, top + 268, 0xFFB9AA92, false);
     }
 
     private void drawAnvilGrid(GuiGraphicsExtractor g, int mouseX, int mouseY) {
@@ -113,29 +121,45 @@ public final class ForgeScreen extends Screen {
     }
 
     private void drawHandles(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        text(g, "EMPUÑADURA", infoX, top + 39, 0xFFE5D6B8, true);
-        int y = top + 58;
+        text(g, "EMPUÑADURA · elige el material", infoX, top + 112, 0xFFE5D6B8, true);
+        int y = top + 129;
         for (int i = 0; i < HANDLES.length; i++) {
             int x = infoX + i * 56;
             boolean selected = handle == i;
             boolean available = (availableHandles & (1 << i)) != 0;
-            button(g, x, y, 52, HANDLES[i], selected, mouseX, mouseY, available);
+            handleButton(g, x, y, i, selected, available, mouseX, mouseY);
         }
-        ForgeMath.Stats s = ForgeMath.evaluate(metal, cells, handle);
-        int color = s.valid() ? 0xFFFFD58A : 0xFFE5D6B8;
-        text(g, "PERFIL: " + s.quality(), infoX, top + 91, color, true);
-        text(g, "Daño: " + format(s.damage()), infoX, top + 111, 0xFFFFFFFF, false);
-        text(g, "Ataque: " + format(4.0 + s.attackSpeed()) + "/s", infoX, top + 128, 0xFFFFFFFF, false);
-        text(g, "Durabilidad: " + s.durability(), infoX, top + 145, 0xFFFFFFFF, false);
-        text(g, "Encantabilidad: " + s.enchantability(), infoX, top + 162, 0xFFFFFFFF, false);
-        text(g, "Filo: " + s.edgePixels() + " px · Punta: " + s.tipWidth() + " px", infoX, top + 179, 0xFFCAB99E, false);
-        text(g, "Hoja: " + s.bladeLength() + " columnas · " + s.metalPixels() + " px", infoX, top + 196, 0xFFCAB99E, false);
-        if (!s.valid()) text(g, fit(s.reason(), 35), infoX, top + 211, 0xFFFF8D70, false);
     }
 
-    private void drawStats(GuiGraphicsExtractor g) {
-        text(g, "Un píxel tallado", left + 14, top + 38, 0xFFFFD58A, true);
-        text(g, "equivale a un golpe real.", left + 14, top + 216, 0xFFB9AA92, false);
+    private void drawGuide(GuiGraphicsExtractor g, ForgeMath.Stats s) {
+        text(g, "CÓMO TALLAR", infoX, top + 36, 0xFFFFD58A, true);
+        step(g, s.edgeRatio() >= 0.55, "1. Quita la fila superior: filo", top + 53);
+        step(g, s.tipWidth() >= 1 && s.tipWidth() <= 2, "2. Punta final: deja 1–2 px", top + 70);
+        step(g, s.connected() && s.metalPixels() >= 24, "3. Mantén unido el espigo", top + 87);
+    }
+
+    private void step(GuiGraphicsExtractor g, boolean done, String label, int y) {
+        g.fill(infoX, y - 2, infoX + 219, y + 13, done ? 0xFF344936 : 0xFF38332B);
+        text(g, done ? "✓" : "○", infoX + 4, y, done ? 0xFF9FE0A5 : 0xFFE7C98F, true);
+        text(g, label, infoX + 17, y, 0xFFEFE8D9, false);
+    }
+
+    private void handleButton(GuiGraphicsExtractor g, int x, int y, int index,
+                              boolean selected, boolean enabled, int mouseX, int mouseY) {
+        boolean hovered = mouseX >= x && mouseX < x + 52 && mouseY >= y && mouseY < y + 22;
+        g.fill(x, y, x + 52, y + 22, !enabled ? 0xFF3B3935 : selected ? 0xFF756043 : hovered ? 0xFF5C564C : 0xFF4A4843);
+        g.fill(x, y, x + 52, y + 1, selected ? 0xFFFFD58A : 0xFF9D988C);
+        g.fill(x, y + 21, x + 52, y + 22, 0xFF292826);
+        g.fakeItem(HANDLE_ICONS[index], x + 2, y + 3);
+        text(g, HANDLES[index], x + 21, y + 8, enabled ? 0xFFFFF0D4 : 0xFF817D75, false);
+    }
+
+    private void drawStats(GuiGraphicsExtractor g, ForgeMath.Stats s) {
+        int color = s.valid() ? 0xFFFFD58A : 0xFFE5D6B8;
+        text(g, "RESULTADO: " + s.quality(), infoX, top + 158, color, true);
+        text(g, "Daño " + format(s.damage()) + "   Ataque " + format(4.0 + s.attackSpeed()) + "/s", infoX, top + 176, 0xFFFFFFFF, false);
+        text(g, fit("Durabilidad " + s.durability() + "   Encantabilidad " + s.enchantability(), 35), infoX, top + 193, 0xFFFFFFFF, false);
+        if (!s.valid()) text(g, fit(s.reason(), 38), infoX, top + 211, 0xFFFF8D70, false);
     }
 
     private void button(GuiGraphicsExtractor g, int x, int y, int w, String label,
@@ -178,13 +202,18 @@ public final class ForgeScreen extends Screen {
             send(0, ForgeMath.index(gx / CELL, gy / CELL));
             return true;
         }
-        int handleY = top + 58;
-        if (mouseY >= handleY && mouseY < handleY + 18 && mouseX >= infoX && mouseX < infoX + 4 * 56) {
+        int handleY = top + 129;
+        if (mouseY >= handleY && mouseY < handleY + 22 && mouseX >= infoX && mouseX < infoX + 4 * 56) {
             int selected = ((int) mouseX - infoX) / 56;
             send(2, selected);
             return true;
         }
         if (inside(mouseX, mouseY, left + 193, top + 250, 112, 18)) {
+            ForgeMath.Stats stats = ForgeMath.evaluate(metal, cells, handle);
+            if (!stats.valid()) {
+                status = stats.reason();
+                return true;
+            }
             send(3, 0);
             return true;
         }
